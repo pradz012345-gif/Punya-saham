@@ -1242,6 +1242,9 @@
   import {
     getFirestore, doc, setDoc, serverTimestamp, increment
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import {
+    getAnalytics, isSupported as analyticsIsSupported
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-analytics.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCPA0TCB4Y_jhl9C32RM4FFUlS1OsVhsYQ",
@@ -1256,6 +1259,15 @@
   const auth = getAuth(fbApp);
   const db = getFirestore(fbApp);
   const provider = new GoogleAuthProvider();
+
+  // Anonymous visitor/page-view tracking (Firebase Analytics). This logs
+  // automatic page_view/session_start events for EVERY visitor, whether or
+  // not they sign in - separate from the visitor sign-in log above. Wrapped
+  // in isSupported() since Analytics can't run in some browsers/contexts
+  // (e.g. private browsing) and shouldn't ever break the calculator if so.
+  analyticsIsSupported().then(function (ok) {
+    if (ok) { getAnalytics(fbApp); }
+  }).catch(function () { /* Analytics unsupported here - ignore, non-critical */ });
 
   const signInBtn = document.getElementById('signInBtn');
   const signOutBtn = document.getElementById('signOutBtn');
