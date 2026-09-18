@@ -443,6 +443,7 @@
       <div class="field">
         <label for="tob">Time of birth</label>
         <input type="time" id="tob" step="60" required />
+        <p class="hint" id="tobConfirm"></p>
       </div>
     </div>
 
@@ -574,6 +575,25 @@
     try { localStorage.setItem('mep-theme', next); } catch (e) {}
   });
 
+  // ---------- time-of-birth AM/PM confirmation ----------
+  // The native time picker's AM/PM toggle is easy to mis-tap without
+  // noticing (a 12-hour slip flips the Ascendant to roughly the opposite
+  // sign of the zodiac, silently). Echo back a plain 12-hour reading so it
+  // can be double-checked before submitting.
+  var tobInput = document.getElementById('tob');
+  var tobConfirmEl = document.getElementById('tobConfirm');
+  function updateTobConfirm() {
+    var val = tobInput.value;
+    if (!val) { tobConfirmEl.textContent = ''; return; }
+    var parts = val.split(':').map(Number);
+    var h = parts[0], m = parts[1];
+    var period = h < 12 ? 'AM' : 'PM';
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    tobConfirmEl.textContent = 'You entered: ' + h12 + ':' + (m < 10 ? '0' : '') + m + ' ' + period + ' — double-check AM/PM is correct.';
+  }
+  tobInput.addEventListener('input', updateTobConfirm);
+  tobInput.addEventListener('change', updateTobConfirm);
+
   // ---------- place selector ----------
   var placeSelect = document.getElementById('place');
   var customCoords = document.getElementById('customCoords');
@@ -583,22 +603,54 @@
     searchSelectedPlace = null;
   });
 
-  // ---------- live place search (OpenStreetMap Nominatim) ----------
-  // Free, no signup, worldwide coverage. All of India uses one timezone
-  // (UTC+5:30 / IST), so an India result is used straight away. For a
-  // non-India result we can't safely guess the UTC offset in general
+  // ---------- live place search (Photon, komoot's free OSM-based geocoder) ----------
+  // Free, no signup, worldwide coverage, and — unlike a plain Nominatim
+  // /search call — built for exactly this "type a few letters, see a
+  // dropdown" use case: it matches on partial words and its osm_tag filter
+  // below keeps results to actual settlements (city/town/village/suburb),
+  // instead of postal wards or admin-boundary noise. All of India uses one
+  // timezone (UTC+5:30 / IST), so an India result is used straight away.
+  // For a non-India result we can't safely guess the UTC offset in general
   // (many countries span multiple zones and/or shift for daylight saving),
   // so we prefill a best-effort guess for single-zone countries into the
-  // manual coordinate fields and ask the person to confirm it. Nominatim's
-  // usage policy asks for roughly 1 request/second max from the shared
-  // public server — the debounce below keeps us well under that even
-  // while someone types.
+  // manual coordinate fields and ask the person to confirm it.
   var placeSearchInput = document.getElementById('placeSearch');
   var placeResultsEl = document.getElementById('placeResults');
   var placeSelectedHintEl = document.getElementById('placeSelectedHint');
   var searchSelectedPlace = null; // { lat, lon, tz, label } once an India result is chosen
   var searchDebounceTimer = null;
   var searchRequestSeq = 0;
+
+  // Settlement types we want back from Photon (place=* tags). Keeping this
+  // list explicit is what filters out roads, buildings, postal wards, etc.
+  var PLACE_TAGS = ['city', 'town', 'village', 'hamlet', 'suburb', 'municipality', 'borough', 'quarter'];
+
+  // Shared search function: given free text, resolves to a normalized list
+  // of { label, lat, lon, cc } results. Used by the live search box and by
+  // the standalone test-search.html harness (kept in sync deliberately).
+  function searchPlaces(query) {
+    var url = 'https://photon.komoot.io/api/?limit=7&lang=en&q=' + encodeURIComponent(query);
+    PLACE_TAGS.forEach(function (t) { url += '&osm_tag=place:' + t; });
+    return fetch(url, { headers: { 'Accept': 'application/json' } })
+      .then(function (res) {
+        if (!res.ok) throw new Error('Search request failed');
+        return res.json();
+      })
+      .then(function (geo) {
+        var feats = (geo && geo.features) || [];
+        return feats.map(function (f) {
+          var p = f.properties || {};
+          var coords = (f.geometry && f.geometry.coordinates) || [];
+          var labelParts = [p.name, p.state, p.country].filter(Boolean);
+          return {
+            label: labelParts.join(', '),
+            lat: coords[1],
+            lon: coords[0],
+            cc: (p.countrycode || '').toLowerCase()
+          };
+        }).filter(function (r) { return r.label && isFinite(r.lat) && isFinite(r.lon); });
+      });
+  }
 
   // Best-effort standard-time UTC offset for countries that use a single
   // timezone year-round (no DST, no internal split). Left out entirely for
@@ -630,16 +682,14 @@
     }
     items.forEach(function (item) {
       var li = document.createElement('li');
-      li.textContent = item.display_name;
+      li.textContent = item.label;
       li.addEventListener('click', function () {
-        var lat = parseFloat(item.lat);
-        var lon = parseFloat(item.lon);
-        var cc = (item.address && item.address.country_code) || '';
+        var lat = item.lat, lon = item.lon, cc = item.cc;
 
         if (cc === 'in') {
-          searchSelectedPlace = { lat: lat, lon: lon, tz: 5.5, label: item.display_name };
-          placeSearchInput.value = item.display_name;
-          placeSelectedHintEl.textContent = 'Selected: ' + item.display_name + ' (' + lat.toFixed(4) + ', ' + lon.toFixed(4) + ')';
+          searchSelectedPlace = { lat: lat, lon: lon, tz: 5.5, label: item.label };
+          placeSearchInput.value = item.label;
+          placeSelectedHintEl.textContent = 'Selected: ' + item.label + ' (' + lat.toFixed(4) + ', ' + lon.toFixed(4) + ')';
           placeSelectedHintEl.classList.add('is-selected');
         } else {
           // Non-India: hand off to the manual coordinate fields so the
@@ -653,13 +703,13 @@
           var tzField = document.getElementById('tz');
           if (guess !== undefined) {
             tzField.value = guess;
-            placeSelectedHintEl.textContent = 'Selected: ' + item.display_name + ' — UTC offset pre-filled as a best guess (' + guess + '). Please double-check it for the birth date (daylight saving can shift it).';
+            placeSelectedHintEl.textContent = 'Selected: ' + item.label + ' — UTC offset pre-filled as a best guess (' + guess + '). Please double-check it for the birth date (daylight saving can shift it).';
           } else {
             tzField.value = '';
-            placeSelectedHintEl.textContent = 'Selected: ' + item.display_name + ' — this country spans more than one timezone, so please enter the UTC offset for that place and date below.';
+            placeSelectedHintEl.textContent = 'Selected: ' + item.label + ' — this country spans more than one timezone, so please enter the UTC offset for that place and date below.';
             tzField.focus();
           }
-          placeSearchInput.value = item.display_name;
+          placeSearchInput.value = item.label;
           placeSelectedHintEl.classList.add('is-selected');
         }
         hidePlaceResults();
@@ -686,15 +736,10 @@
       placeResultsEl.innerHTML = '<li class="loading">Searching&hellip;</li>';
       placeResultsEl.hidden = false;
 
-      var url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=7&q=' + encodeURIComponent(query);
-      fetch(url, { headers: { 'Accept': 'application/json' } })
-        .then(function (res) {
-          if (!res.ok) throw new Error('Search request failed');
-          return res.json();
-        })
-        .then(function (data) {
+      searchPlaces(query)
+        .then(function (results) {
           if (mySeq !== searchRequestSeq) return; // a newer keystroke superseded this request
-          renderPlaceResults(data || []);
+          renderPlaceResults(results || []);
         })
         .catch(function () {
           if (mySeq !== searchRequestSeq) return;
@@ -801,8 +846,13 @@
     var eps = toRad(meanObliquity(T));
     var lstRad = toRad(lst);
     var latRad = toRad(latDeg);
-    var y = -Math.cos(lstRad);
-    var x = Math.sin(eps) * Math.tan(latRad) + Math.cos(eps) * Math.sin(lstRad);
+    // NOTE: this sign convention (not the mirrored one) was verified against
+    // a real, known-correct birth chart (25 May 1988, 11:33 AM, Trichy ->
+    // Karka Lagna / Ashlesha) after an earlier version of this formula was
+    // found to return the Descendant (opposite sign) instead of the
+    // Ascendant - a classic transcription pitfall in this formula.
+    var y = Math.cos(lstRad);
+    var x = -(Math.sin(eps) * Math.tan(latRad) + Math.cos(eps) * Math.sin(lstRad));
     return norm360(toDeg(Math.atan2(y, x)));
   }
 
