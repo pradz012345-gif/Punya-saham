@@ -1414,10 +1414,17 @@
 
     setTimeout(function () {
       buildAndDownloadReport(lastCharts).then(function () {
-        reportStatusEl.textContent = 'Report downloaded.';
+        reportStatusEl.textContent = '✅ Report downloaded — check your notification shade or your phone’s Downloads/Files app to open it.';
+        reportStatusEl.style.color = 'var(--accent-2, #3f7a68)';
+        reportStatusEl.style.fontWeight = '600';
+        // doc.save() gives no visible confirmation on its own on mobile, so this
+        // alert is a deliberate, hard-to-miss acknowledgement that it worked.
+        alert('Your report has been downloaded to your device.\n\nCheck your notification shade, or open your Downloads/Files app, to view the PDF.');
       }).catch(function (err) {
         console.error('Report generation failed', err);
         reportStatusEl.textContent = 'Something went wrong generating the report. Please try again.';
+        reportStatusEl.style.color = '';
+        reportStatusEl.style.fontWeight = '';
       }).then(function () {
         genReportBtn.disabled = false;
       });
@@ -1448,99 +1455,133 @@
     });
     timeline.sort(function (a, b) { return a.start - b.start; });
 
+    // jsPDF's built-in fonts only support the WinAnsi character set - fancy
+    // Unicode (arrows, prime/double-prime degree marks, curly quotes) render as
+    // garbage. This strips/replaces everything PDF-unsafe while keeping the
+    // wording identical to what's shown on the live web page.
+    function pdfSafe(s) {
+      return String(s)
+        .replace(/→/g, ' to ')      // →
+        .replace(/[‘’]/g, "'") // ' '
+        .replace(/[“”]/g, '"') // " "
+        .replace(/–/g, '-')         // –
+        .replace(/—/g, '-');        // — (WinAnsi has an em dash at 0x97,
+                                          // but some viewers render it oddly at
+                                          // small sizes - a plain hyphen is safest)
+    }
+    // Plain-ASCII degree/arcmin/arcsec format for the PDF only (the live page
+    // keeps the nicer degToDMS with real prime marks).
+    function degDMSPdf(deg) {
+      var d = Math.floor(deg);
+      var mFull = (deg - d) * 60;
+      var m = Math.floor(mFull);
+      var s = Math.round((mFull - m) * 60);
+      return d + "deg " + m + "' " + s + '"';
+    }
+
     function renderPDF() {
       var jspdf = window.jspdf;
       var doc = new jspdf.jsPDF({ unit: 'pt', format: 'a4' });
       var pageW = doc.internal.pageSize.getWidth();
-      var margin = 48;
+      var pageH = doc.internal.pageSize.getHeight();
+      var margin = 50;
+      var contentW = pageW - margin * 2;
       var y = margin;
-      var lineH = 15;
+      var lineH = 14;
       var gold = [180, 140, 60];
 
       function ensureSpace(h) {
-        if (y + h > 792 - margin) { doc.addPage(); y = margin; }
+        if (y + h > pageH - margin) { doc.addPage(); y = margin; }
       }
       function heading(text, size) {
-        ensureSpace(size + 10);
+        ensureSpace(size + 8);
         doc.setFont('helvetica', 'bold'); doc.setFontSize(size); doc.setTextColor(30, 20, 10);
-        doc.text(text, margin, y); y += size + 8;
+        doc.text(pdfSafe(text), margin, y); y += size + 6;
       }
-      function para(text, size) {
-        size = size || 10.5;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(size); doc.setTextColor(50, 45, 40);
-        var lines = doc.splitTextToSize(text, pageW - margin * 2);
+      function para(text, opts) {
+        opts = opts || {};
+        var size = opts.size || 10;
+        doc.setFont('helvetica', opts.italic ? 'italic' : 'normal');
+        doc.setFontSize(size);
+        var col = opts.color || [55, 50, 45];
+        doc.setTextColor(col[0], col[1], col[2]);
+        var lines = doc.splitTextToSize(pdfSafe(text), contentW);
         lines.forEach(function (line) {
           ensureSpace(lineH);
           doc.text(line, margin, y); y += lineH;
         });
-        y += 6;
+        y += 5;
       }
 
       // ---- Cover ----
-      doc.setFillColor(gold[0], gold[1], gold[2]);
       doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(30, 20, 10);
-      doc.text('Punya Saham', margin, y); y += 28;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(90, 70, 30);
-      doc.text('Fortune Point Transit Report — 1 Year Outlook', margin, y); y += 30;
+      doc.text('Punya Saham', margin, y); y += 26;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(12.5); doc.setTextColor(120, 95, 40);
+      doc.text('Fortune Point Transit Report - 1 Year Outlook', margin, y); y += 26;
 
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(60, 60, 60);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(70, 70, 70);
       doc.text('Name: ' + (c.name || '-'), margin, y); y += lineH;
-      doc.text('Report period: ' + fmtISTDate(jdStart) + '  →  ' + fmtISTDate(jdEnd), margin, y); y += lineH + 8;
+      doc.text('Report period: ' + fmtISTDate(jdStart) + '  to  ' + fmtISTDate(jdEnd), margin, y); y += lineH + 10;
 
+      var boxH = 54;
       doc.setDrawColor(gold[0], gold[1], gold[2]); doc.setLineWidth(1);
-      doc.rect(margin, y, pageW - margin * 2, 56);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(30, 20, 10);
-      doc.text('Your Fortune Point: ' + c.sahamChart.rasiName + ' — ' + c.sahamChart.nakshatraName + ' Nakshatra, Pada ' + c.sahamChart.pada, margin + 12, y + 24);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(90, 90, 90);
-      doc.text('Exact degree: ' + degToDMS(target), margin + 12, y + 42);
-      y += 56 + 20;
+      doc.roundedRect(margin, y, contentW, boxH, 4, 4);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5); doc.setTextColor(30, 20, 10);
+      doc.text(pdfSafe('Your Fortune Point: ' + c.sahamChart.rasiName + ' - ' + c.sahamChart.nakshatraName + ' Nakshatra, Pada ' + c.sahamChart.pada), margin + 12, y + 22);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(100, 100, 100);
+      doc.text('Exact degree: ' + degDMSPdf(target), margin + 12, y + 40);
+      y += boxH + 18;
 
-      para("In Vedic astrology, this point marks where your accumulated merit (punya) is believed to take shape in this life — the people, opportunities and circumstances through which good fortune tends to reach you. This report tracks every moment over the next year that a planet activates this exact point in transit.");
+      para("In Vedic astrology, this point marks where your accumulated merit (punya) is believed to take shape in this life - the people, opportunities and circumstances through which good fortune tends to reach you. This report tracks every moment over the next year that a planet activates this exact point in transit.");
 
       // ---- How to read ----
-      heading('How to read this report', 14);
-      para('Each row below is a "transit window" — a span of time during which a planet is close enough to your Fortune Point’s exact degree (within half a nakshatra pada, 1°40′, either side) for its influence to be considered active. The "peak" date/time is the closest, most exact moment within that window.');
-      para('The Moon crosses this window roughly once a month, but because each crossing lasts only about 6–7 hours, it can sometimes fall entirely at night. So for the Moon only, this report also shows a wider "extended" window (about 18–19 hours, covering the pada before and after the core one) so you have a practical chance of catching daylight hours even when the sharpest peak falls late at night. All other planets move slowly enough that this isn’t a concern for them.');
+      heading('How to read this report', 13);
+      para('Each row below is a "transit window" - a span of time during which a planet is close enough to your Fortune Point\'s exact degree (within half a nakshatra pada, 1 deg 40 min, either side) for its influence to be considered active. The "peak" date/time is the closest, most exact moment within that window.');
+      para('The Moon crosses this window roughly once a month, but because each crossing lasts only about 6-7 hours, it can sometimes fall entirely at night. So for the Moon only, this report also shows a wider "extended" window (about 18-19 hours, covering the pada before and after the core one) so you have a practical chance of catching daylight hours even when the sharpest peak falls late at night. All other planets move slowly enough that this isn\'t a concern for them.');
 
       // ---- Timeline ----
-      heading('Your Transit Timeline', 14);
+      heading('Your Transit Timeline', 13);
       if (timeline.length === 0) {
-        para('No transits from the classical planets fall within this exact window over the coming year — this can happen, especially for the slower-moving planets (Mars, Jupiter, Saturn), depending on where they currently sit relative to your Fortune Point. Check back for a report covering the following year.');
+        para('No transits from the classical planets fall within this exact window over the coming year - this can happen, especially for the slower-moving planets (Mars, Jupiter, Saturn), depending on where they currently sit relative to your Fortune Point. Check back for a report covering the following year.');
       }
+      var rowPad = 8;
       timeline.forEach(function (item) {
-        ensureSpace(46);
-        doc.setFillColor(245, 238, 220);
-        doc.rect(margin, y, pageW - margin * 2, 40, 'F');
+        var hasExt = item.planet === 'moon';
+        var ext = hasExt ? transits.moonExtended.find(function (w) { return Math.abs(w.peak - item.peak) < 0.5; }) : null;
+        var rowH = rowPad * 2 + 13 + 12 + 12 + (ext ? 12 : 0);
+        ensureSpace(rowH + 6);
+        doc.setFillColor(246, 240, 222);
+        doc.roundedRect(margin, y, contentW, rowH, 3, 3, 'F');
+        var ty = y + rowPad + 10;
         doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 20, 10);
-        doc.text(PLANET_DISPLAY[item.planet], margin + 10, y + 15);
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(70, 70, 70);
-        doc.text('Peak: ' + fmtIST(item.peak), margin + 10, y + 30);
-        doc.setFontSize(8.5); doc.setTextColor(110, 110, 110);
-        var rangeText = fmtIST(item.start) + '  →  ' + fmtIST(item.end);
-        doc.text(rangeText, margin + 170, y + 30);
-        y += 46;
-        if (item.planet === 'moon') {
-          var ext = transits.moonExtended.find(function (w) { return Math.abs(w.peak - item.peak) < 0.5; });
-          if (ext) {
-            ensureSpace(16);
-            doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(120, 100, 60);
-            doc.text('Extended favourable window (incl. daylight hours): ' + fmtIST(ext.start) + '  →  ' + fmtIST(ext.end), margin + 10, y);
-            y += 16;
-          }
+        doc.text(PLANET_DISPLAY[item.planet], margin + 10, ty); ty += 13;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80, 80, 80);
+        doc.text('Peak: ' + fmtIST(item.peak), margin + 10, ty); ty += 12;
+        doc.setFontSize(8.5); doc.setTextColor(120, 120, 120);
+        doc.text(pdfSafe('Window: ' + fmtIST(item.start) + '  to  ' + fmtIST(item.end)), margin + 10, ty); ty += 12;
+        if (ext) {
+          doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(140, 110, 50);
+          doc.text(pdfSafe('Extended (daylight-friendly): ' + fmtIST(ext.start) + '  to  ' + fmtIST(ext.end)), margin + 10, ty);
         }
+        y += rowH + 6;
       });
 
       // ---- Planet guide ----
       doc.addPage(); y = margin;
-      heading('Planet-by-Planet Guide', 16);
+      heading('Planet-by-Planet Guide', 15);
       TRANSIT_PLANETS.forEach(function (name) {
-        heading(PLANET_DISPLAY[name], 12);
+        heading(PLANET_DISPLAY[name], 11.5);
         para(PLANET_PARAGRAPHS[name]);
       });
 
-      // ---- Footer / disclaimer ----
-      heading('Methodology & Disclaimer', 12);
-      para('Calculations use low-precision but well-verified astronomical formulas (Meeus solar/lunar series for Sun and Moon; JPL/Standish Keplerian elements for the other planets) and the Lahiri (Chitrapaksha) ayanamsa, cross-checked against independent published ephemerides. Punya Saham and its transit activations reflect traditional Tajika (Varshaphal) technique rather than a single universally agreed method — treat this as a traditional reading, not a certainty. For time-critical decisions, verify against a Swiss-Ephemeris-based chart.', 9);
+      // ---- Footer / disclaimer (visually distinct - italic, smaller, muted,
+      // like terms & conditions fine print) ----
+      ensureSpace(30);
+      doc.setDrawColor(210, 200, 180); doc.setLineWidth(0.6);
+      doc.line(margin, y, margin + contentW, y); y += 14;
+      doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(9.5); doc.setTextColor(110, 105, 95);
+      doc.text('Methodology & Disclaimer', margin, y); y += 14;
+      para('Calculations use low-precision but well-verified astronomical formulas (Meeus solar/lunar series for Sun and Moon; JPL/Standish Keplerian elements for the other planets) and the Lahiri (Chitrapaksha) ayanamsa, cross-checked against independent published ephemerides. Punya Saham and its transit activations reflect traditional Tajika (Varshaphal) technique rather than a single universally agreed method - treat this as a traditional reading, not a certainty. For time-critical decisions, verify against a Swiss-Ephemeris-based chart.', { size: 8.5, italic: true, color: [130, 125, 115] });
 
       var fname = 'Fortune-Point-Transit-Report' + (c.name ? '-' + c.name.replace(/[^a-z0-9]+/gi, '-') : '') + '.pdf';
       doc.save(fname);
