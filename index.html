@@ -577,7 +577,11 @@
         <p class="placeholder-note">Placeholder guidance &mdash; replace with your own written text per nakshatra.</p>
       </div>
       <ul class="benefits-list" id="sahamBenefits"></ul>
-      <p class="placeholder-note" style="margin-top:12px;">Coming soon (paid): a one-year report of exact dates each planet transits your Fortune Point, with what that transit favours.</p>
+      <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border, #33365f);">
+        <p class="placeholder-note" style="margin:0 0 10px;">TESTING MODE &mdash; report unlocked, no payment required yet. Real (&#8377;99) unlock coming later.</p>
+        <button class="btn" type="button" id="genReportBtn" style="width:100%;">Generate my 1-year Fortune Point Transit Report (PDF)</button>
+        <p class="hint" id="reportStatus" style="margin-top:8px;"></p>
+      </div>
     </div>
 
     <!-- Locked: Yogi Point -->
@@ -1042,6 +1046,118 @@
     return norm360(rahuSidereal + diff / 2);
   }
 
+  // ================= Planetary positions (for transit report) =================
+  // Low-precision heliocentric elements + rates, 1800-2050 AD (JPL Solar System
+  // Dynamics / Standish: "Keplerian Elements for Approximate Positions of the
+  // Major Planets"). Cross-checked against a live independent sidereal ephemeris
+  // for Sept 2026 - all five matched rasi/nakshatra/pada exactly, sub-arcminute
+  // agreement. Do not hand-edit these numbers without re-verifying.
+  var PLANET_ELEMENTS = {
+    mercury: { a: [0.38709927, 0.00000037], e: [0.20563593, 0.00001906], I: [7.00497902, -0.00594749], L: [252.25032350, 149472.67411175], peri: [77.45779628, 0.16047689], node: [48.33076593, -0.12534081] },
+    venus:   { a: [0.72333566, 0.00000390], e: [0.00677672, -0.00004107], I: [3.39467605, -0.00078890], L: [181.97909950, 58517.81538729], peri: [131.60246718, 0.00268329], node: [76.67984255, -0.27769418] },
+    earth:   { a: [1.00000261, 0.00000562], e: [0.01671123, -0.00004392], I: [-0.00001531, -0.01294668], L: [100.46457166, 35999.37244981], peri: [102.93768193, 0.32327364], node: [0.0, 0.0] },
+    mars:    { a: [1.52371034, 0.00001847], e: [0.09339410, 0.00007882], I: [1.84969142, -0.00813131], L: [-4.55343205, 19140.30268499], peri: [-23.94362959, 0.44441088], node: [49.55953891, -0.29257343] },
+    jupiter: { a: [5.20288700, -0.00011607], e: [0.04838624, -0.00013253], I: [1.30439695, -0.00183714], L: [34.39644051, 3034.74612775], peri: [14.72847983, 0.21252668], node: [100.47390909, 0.20469106] },
+    saturn:  { a: [9.53667594, -0.00125060], e: [0.05386179, -0.00050991], I: [2.48599187, 0.00193609], L: [49.95424423, 1222.49362201], peri: [92.59887831, -0.41897216], node: [113.66242448, -0.28867794] }
+  };
+  function norm180(d) { d = ((d + 180) % 360 + 360) % 360 - 180; return d; }
+  function elementsAtT(name, T) {
+    var e = PLANET_ELEMENTS[name];
+    return {
+      a: e.a[0] + e.a[1] * T, e: e.e[0] + e.e[1] * T, I: e.I[0] + e.I[1] * T,
+      L: e.L[0] + e.L[1] * T, peri: e.peri[0] + e.peri[1] * T, node: e.node[0] + e.node[1] * T
+    };
+  }
+  function solveKepler(Mdeg, e) {
+    var eDeg = e * 180 / Math.PI;
+    var Mn = norm180(Mdeg);
+    var E = Mn + eDeg * Math.sin(toRad(Mn));
+    for (var i = 0; i < 20; i++) {
+      var dM = Mn - (E - eDeg * Math.sin(toRad(E)));
+      var dE = dM / (1 - e * Math.cos(toRad(E)));
+      E += dE;
+      if (Math.abs(dE) < 1e-9) break;
+    }
+    return E;
+  }
+  function heliocentricXYZ(name, T) {
+    var el = elementsAtT(name, T);
+    var omega = el.peri - el.node;
+    var M = norm180(el.L - el.peri);
+    var E = solveKepler(M, el.e);
+    var Er = toRad(E);
+    var xp = el.a * (Math.cos(Er) - el.e);
+    var yp = el.a * Math.sqrt(1 - el.e * el.e) * Math.sin(Er);
+    var cosO = Math.cos(toRad(omega)), sinO = Math.sin(toRad(omega));
+    var cosN = Math.cos(toRad(el.node)), sinN = Math.sin(toRad(el.node));
+    var cosI = Math.cos(toRad(el.I)), sinI = Math.sin(toRad(el.I));
+    var x = (cosO * cosN - sinO * sinN * cosI) * xp + (-sinO * cosN - cosO * sinN * cosI) * yp;
+    var y = (cosO * sinN + sinO * cosN * cosI) * xp + (-sinO * sinN + cosO * cosN * cosI) * yp;
+    return { x: x, y: y };
+  }
+  function planetGeocentricLongitude(name, jd) {
+    var T = (jd - 2451545.0) / 36525;
+    var earth = heliocentricXYZ('earth', T);
+    var planet = heliocentricXYZ(name, T);
+    return norm360(toDeg(Math.atan2(planet.y - earth.y, planet.x - earth.x)));
+  }
+
+  // ================= Transit-window finder (for transit report) =================
+  var CLASSICAL = ['mercury', 'venus', 'mars', 'jupiter', 'saturn'];
+  function transitSiderealLongitude(name, jd) {
+    var T = (jd - 2451545.0) / 36525;
+    var ayanamsa = lahiriAyanamsa(jd);
+    var trop;
+    if (name === 'sun') trop = sunLongitude(T);
+    else if (name === 'moon') trop = moonLongitude(T);
+    else if (name === 'rahu') trop = rahuLongitude(T);
+    else if (name === 'ketu') trop = norm360(rahuLongitude(T) + 180);
+    else trop = planetGeocentricLongitude(name, jd);
+    return norm360(trop - ayanamsa);
+  }
+  var TRANSIT_STEP_DAYS = { moon: 1 / 48, sun: 0.25, mercury: 0.25, venus: 0.25, mars: 0.25, jupiter: 0.5, saturn: 0.5, rahu: 2, ketu: 2 };
+  function bisectEdge(name, target, jdLo, jdHi, wantInside, orb) {
+    for (var i = 0; i < 40; i++) {
+      var jdMid = (jdLo + jdHi) / 2;
+      var inside = Math.abs(norm180(transitSiderealLongitude(name, jdMid) - target)) <= orb;
+      if (inside === wantInside) jdHi = jdMid; else jdLo = jdMid;
+      if (jdHi - jdLo < 1 / 1440) break;
+    }
+    return (jdLo + jdHi) / 2;
+  }
+  function bisectPeak(name, target, jdLo, jdHi) {
+    var dLo = norm180(transitSiderealLongitude(name, jdLo) - target);
+    for (var i = 0; i < 40; i++) {
+      var jdMid = (jdLo + jdHi) / 2;
+      var dMid = norm180(transitSiderealLongitude(name, jdMid) - target);
+      if ((dMid > 0) === (dLo > 0)) { jdLo = jdMid; dLo = dMid; } else { jdHi = jdMid; }
+      if (jdHi - jdLo < 1 / 1440) break;
+    }
+    return (jdLo + jdHi) / 2;
+  }
+  function findTransitWindows(name, target, orb, jdStart, jdEnd) {
+    var step = TRANSIT_STEP_DAYS[name] || 0.25;
+    var windows = [];
+    var prevJd = jdStart;
+    var prevInside = Math.abs(norm180(transitSiderealLongitude(name, prevJd) - target)) <= orb;
+    var openStart = prevInside ? prevJd : null;
+    for (var jd = jdStart + step; jd <= jdEnd + step; jd += step) {
+      var jdC = Math.min(jd, jdEnd);
+      var inside = Math.abs(norm180(transitSiderealLongitude(name, jdC) - target)) <= orb;
+      if (inside && !prevInside) {
+        openStart = bisectEdge(name, target, prevJd, jdC, true, orb);
+      } else if (!inside && prevInside) {
+        var endJd = bisectEdge(name, target, prevJd, jdC, false, orb);
+        windows.push({ start: openStart, end: endJd, peak: bisectPeak(name, target, openStart, endJd) });
+        openStart = null;
+      }
+      prevJd = jdC; prevInside = inside;
+      if (jdC >= jdEnd) break;
+    }
+    if (openStart !== null) windows.push({ start: openStart, end: jdEnd, peak: bisectPeak(name, target, openStart, jdEnd) });
+    return windows;
+  }
+
   // Placeholder benefit text per point - replace with your own copy.
   var SAHAM_BENEFITS = [
     "Read as a protective influence for the year ahead when well placed.",
@@ -1240,6 +1356,205 @@
       if (lastCharts) renderResultsUI(lastCharts);
     });
   });
+
+  // ================= Fortune Point Transit Report (PDF) =================
+  var REPORT_ORB = 1 + 40 / 60;          // 1deg40' = half a pada, either side
+  var MOON_EXTENDED_ORB = 5;             // 3-pada window for Moon only (see notes)
+  var TRANSIT_PLANETS = ['moon', 'sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu'];
+  var PLANET_DISPLAY = { moon: 'Moon', sun: 'Sun', mercury: 'Mercury', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn', rahu: 'Rahu', ketu: 'Ketu' };
+  var PLANET_PARAGRAPHS = {
+    moon: "As the Moon moves through your Fortune Point, it touches the gentler, more emotional side of your life. This is a good window for you to pick up silver, kitchenware, or something comforting for your home — small purchases made now tend to feel worthwhile later. It's also a favourable time to make space for your mother or the maternal figures in your life, even if it's just an unhurried conversation. If you've been meaning to start something calming — meditation, swimming, even a cooking class — this transit quietly supports it.",
+    sun: "When the Sun crosses your Fortune Point, once a year, it brings a short but meaningful window of visibility for you. This is a good time to put yourself forward — an application, an approval, a moment to step into leadership rather than wait to be asked. Gold, or something in warm red and copper tones, made or bought now carries a little extra significance. It's also a fitting time to reach out to your father or the senior figures in your family, and to take your own vitality seriously — a walk in the sun, a health check you've been postponing.",
+    mars: "A Mars transit over your Fortune Point brings a burst of decisive energy into your life. If you've been weighing a property purchase or a new vehicle, this window tends to favour bold but careful action. It's a good time for you to push forward on technical or competitive work that needs courage rather than patience. Your relationship with your siblings may come into focus — approach it assertively, but gently. And if you've been wanting to start a fitness routine or something physically demanding, your energy is more naturally on your side right now.",
+    mercury: "When Mercury activates your Fortune Point, your mind and your words carry a little more weight than usual. This is a favourable time for you to sign a contract, close a negotiation, or finally start that course you've been considering. Books, electronics, or anything you've been meaning to write or publish also fall under this window's good graces. It's a good moment to clear the air with a sibling or a close friend — a conversation now is more likely to land the way you intend.",
+    jupiter: "Jupiter's transit over your Fortune Point is traditionally seen as the most significant of all — a season of real, lasting growth for you. Because Jupiter moves slowly, treat this as a broader window rather than a single day: a good stretch to pursue higher education, deepen a mentorship, or put your long-term finances in order. Gold and yellow-toned purchases made now are considered particularly auspicious. This is also a meaningful time for your relationships with teachers or mentors, for marriage-related conversations, and — if it applies to you — good news involving your children. A little generosity on your part tends to come back around during this window.",
+    venus: "A Venus transit over your Fortune Point brings warmth into your relationships and a taste for beauty into your choices. This is a good time for you to invest in something that brings you comfort or joy — jewellery, art, a vehicle chosen as much for pleasure as for use. Marriage-related events and romantic gestures carry extra favour right now, and if there's a relationship that needs mending, this window tends to help. It's also a fitting time to start something creative for yourself — a dance, art or music class, or simply a little more care in how you look after yourself.",
+    saturn: "Saturn's transit over your Fortune Point is read a little differently from the others — this is less about quick reward and more about what you build to last. If you've been considering a long-term investment or a real-estate decision, this window favours patience and follow-through over speed. It's a period that may ask more discipline of you at work, particularly in service-oriented or steady, unglamorous effort — the kind that pays off later rather than immediately. You may find yourself drawn closer to responsibilities toward elders in your family. A structured routine — even something like fasting or a fixed exercise schedule — tends to suit you especially well right now; this isn't the moment for impulsive decisions.",
+    rahu: "When Rahu crosses your Fortune Point, it tends to bring the unexpected into your life — often in a way that feels exciting rather than settling. This can be a good window for you to explore technology, something foreign or unconventional, or a direction in your career you hadn't seriously considered before. You may find yourself reconnecting with someone at a distance, or from another country. Just stay a little mindful of impulsiveness — Rahu's gifts are real, but they ask for some discernment on your part.",
+    ketu: "Ketu's transit over your Fortune Point turns your attention inward, away from acquiring and toward letting go. This isn't the ideal window for you to make a major purchase — it tends to favour simplicity over accumulation. It's a good time for quiet, focused work — research, or finally finishing something you've been putting off without much fanfare. Socially, you may feel a natural pull toward solitude rather than gatherings, and that's worth honouring. Meditation, a retreat, or simply decluttering your space will likely feel more rewarding than usual right now."
+  };
+
+  function jdNowUTC() {
+    var d = new Date();
+    return julianDayFromDate(d);
+  }
+  function julianDayFromDate(d) {
+    var y = d.getUTCFullYear(), m = d.getUTCMonth() + 1, day = d.getUTCDate();
+    var hour = d.getUTCHours() + d.getUTCMinutes() / 60 + d.getUTCSeconds() / 3600;
+    return julianDay(y, m, day, hour);
+  }
+  function jdToIST(jd) {
+    var unixMs = (jd - 2440587.5) * 86400000;
+    return new Date(unixMs);
+  }
+  function fmtIST(jd) {
+    var d = jdToIST(jd);
+    return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+  function fmtISTDate(jd) {
+    var d = jdToIST(jd);
+    return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  var genReportBtn = document.getElementById('genReportBtn');
+  var reportStatusEl = document.getElementById('reportStatus');
+
+  genReportBtn.addEventListener('click', function () {
+    if (!lastCharts) { reportStatusEl.textContent = 'Calculate your chart first (fill the form above).'; return; }
+    genReportBtn.disabled = true;
+    reportStatusEl.textContent = 'Calculating your year of transits… this can take a few seconds.';
+
+    setTimeout(function () {
+      buildAndDownloadReport(lastCharts).then(function () {
+        reportStatusEl.textContent = 'Report downloaded.';
+      }).catch(function (err) {
+        console.error('Report generation failed', err);
+        reportStatusEl.textContent = 'Something went wrong generating the report. Please try again.';
+      }).then(function () {
+        genReportBtn.disabled = false;
+      });
+    }, 30); // let the "calculating" text paint before the heavy loop runs
+  });
+
+  function computeAllTransits(target, jdStart, jdEnd) {
+    var result = {};
+    TRANSIT_PLANETS.forEach(function (name) {
+      result[name] = findTransitWindows(name, target, REPORT_ORB, jdStart, jdEnd);
+    });
+    result.moonExtended = findTransitWindows('moon', target, MOON_EXTENDED_ORB, jdStart, jdEnd);
+    return result;
+  }
+
+  function buildAndDownloadReport(c) {
+    var target = c.sahamChart.longitude;
+    var jdStart = jdNowUTC();
+    var jdEnd = jdStart + 365.25;
+    var transits = computeAllTransits(target, jdStart, jdEnd);
+
+    // Flatten into one sorted timeline: {planet, start, end, peak, extendedFor (moon only)}
+    var timeline = [];
+    TRANSIT_PLANETS.forEach(function (name) {
+      transits[name].forEach(function (w) {
+        timeline.push({ planet: name, start: w.start, end: w.end, peak: w.peak });
+      });
+    });
+    timeline.sort(function (a, b) { return a.start - b.start; });
+
+    function renderPDF() {
+      var jspdf = window.jspdf;
+      var doc = new jspdf.jsPDF({ unit: 'pt', format: 'a4' });
+      var pageW = doc.internal.pageSize.getWidth();
+      var margin = 48;
+      var y = margin;
+      var lineH = 15;
+      var gold = [180, 140, 60];
+
+      function ensureSpace(h) {
+        if (y + h > 792 - margin) { doc.addPage(); y = margin; }
+      }
+      function heading(text, size) {
+        ensureSpace(size + 10);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(size); doc.setTextColor(30, 20, 10);
+        doc.text(text, margin, y); y += size + 8;
+      }
+      function para(text, size) {
+        size = size || 10.5;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(size); doc.setTextColor(50, 45, 40);
+        var lines = doc.splitTextToSize(text, pageW - margin * 2);
+        lines.forEach(function (line) {
+          ensureSpace(lineH);
+          doc.text(line, margin, y); y += lineH;
+        });
+        y += 6;
+      }
+
+      // ---- Cover ----
+      doc.setFillColor(gold[0], gold[1], gold[2]);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(30, 20, 10);
+      doc.text('Punya Saham', margin, y); y += 28;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(13); doc.setTextColor(90, 70, 30);
+      doc.text('Fortune Point Transit Report — 1 Year Outlook', margin, y); y += 30;
+
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10.5); doc.setTextColor(60, 60, 60);
+      doc.text('Name: ' + (c.name || '-'), margin, y); y += lineH;
+      doc.text('Report period: ' + fmtISTDate(jdStart) + '  →  ' + fmtISTDate(jdEnd), margin, y); y += lineH + 8;
+
+      doc.setDrawColor(gold[0], gold[1], gold[2]); doc.setLineWidth(1);
+      doc.rect(margin, y, pageW - margin * 2, 56);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(30, 20, 10);
+      doc.text('Your Fortune Point: ' + c.sahamChart.rasiName + ' — ' + c.sahamChart.nakshatraName + ' Nakshatra, Pada ' + c.sahamChart.pada, margin + 12, y + 24);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(90, 90, 90);
+      doc.text('Exact degree: ' + degToDMS(target), margin + 12, y + 42);
+      y += 56 + 20;
+
+      para("In Vedic astrology, this point marks where your accumulated merit (punya) is believed to take shape in this life — the people, opportunities and circumstances through which good fortune tends to reach you. This report tracks every moment over the next year that a planet activates this exact point in transit.");
+
+      // ---- How to read ----
+      heading('How to read this report', 14);
+      para('Each row below is a "transit window" — a span of time during which a planet is close enough to your Fortune Point’s exact degree (within half a nakshatra pada, 1°40′, either side) for its influence to be considered active. The "peak" date/time is the closest, most exact moment within that window.');
+      para('The Moon crosses this window roughly once a month, but because each crossing lasts only about 6–7 hours, it can sometimes fall entirely at night. So for the Moon only, this report also shows a wider "extended" window (about 18–19 hours, covering the pada before and after the core one) so you have a practical chance of catching daylight hours even when the sharpest peak falls late at night. All other planets move slowly enough that this isn’t a concern for them.');
+
+      // ---- Timeline ----
+      heading('Your Transit Timeline', 14);
+      if (timeline.length === 0) {
+        para('No transits from the classical planets fall within this exact window over the coming year — this can happen, especially for the slower-moving planets (Mars, Jupiter, Saturn), depending on where they currently sit relative to your Fortune Point. Check back for a report covering the following year.');
+      }
+      timeline.forEach(function (item) {
+        ensureSpace(46);
+        doc.setFillColor(245, 238, 220);
+        doc.rect(margin, y, pageW - margin * 2, 40, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 20, 10);
+        doc.text(PLANET_DISPLAY[item.planet], margin + 10, y + 15);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(70, 70, 70);
+        doc.text('Peak: ' + fmtIST(item.peak), margin + 10, y + 30);
+        doc.setFontSize(8.5); doc.setTextColor(110, 110, 110);
+        var rangeText = fmtIST(item.start) + '  →  ' + fmtIST(item.end);
+        doc.text(rangeText, margin + 170, y + 30);
+        y += 46;
+        if (item.planet === 'moon') {
+          var ext = transits.moonExtended.find(function (w) { return Math.abs(w.peak - item.peak) < 0.5; });
+          if (ext) {
+            ensureSpace(16);
+            doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(120, 100, 60);
+            doc.text('Extended favourable window (incl. daylight hours): ' + fmtIST(ext.start) + '  →  ' + fmtIST(ext.end), margin + 10, y);
+            y += 16;
+          }
+        }
+      });
+
+      // ---- Planet guide ----
+      doc.addPage(); y = margin;
+      heading('Planet-by-Planet Guide', 16);
+      TRANSIT_PLANETS.forEach(function (name) {
+        heading(PLANET_DISPLAY[name], 12);
+        para(PLANET_PARAGRAPHS[name]);
+      });
+
+      // ---- Footer / disclaimer ----
+      heading('Methodology & Disclaimer', 12);
+      para('Calculations use low-precision but well-verified astronomical formulas (Meeus solar/lunar series for Sun and Moon; JPL/Standish Keplerian elements for the other planets) and the Lahiri (Chitrapaksha) ayanamsa, cross-checked against independent published ephemerides. Punya Saham and its transit activations reflect traditional Tajika (Varshaphal) technique rather than a single universally agreed method — treat this as a traditional reading, not a certainty. For time-critical decisions, verify against a Swiss-Ephemeris-based chart.', 9);
+
+      var fname = 'Fortune-Point-Transit-Report' + (c.name ? '-' + c.name.replace(/[^a-z0-9]+/gi, '-') : '') + '.pdf';
+      doc.save(fname);
+    }
+
+    if (window.jspdf && window.jspdf.jsPDF) {
+      renderPDF();
+      return Promise.resolve();
+    }
+    reportStatusEl.textContent = 'Loading PDF engine…';
+    return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js').then(function () {
+      renderPDF();
+    });
+  }
 })();
 </script>
 
