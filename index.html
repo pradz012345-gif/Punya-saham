@@ -1574,6 +1574,17 @@
         para(PLANET_PARAGRAPHS[name]);
       });
 
+      // ---- Your other Fortune Points (Yogi Point & Bhrigu Bindu) ----
+      doc.addPage(); y = margin;
+      heading('Your Other Fortune Points', 15);
+      para('Alongside Punya Saham, two more traditional "fortune point" techniques are calculated for you from the same birth details. They are included here for completeness - a fuller transit report for each may be offered separately in future.');
+
+      heading('Yogi Point - ' + c.yogiChart.rasiName + ', ' + c.yogiChart.nakshatraName + ' Nakshatra, Pada ' + c.yogiChart.pada, 11.5);
+      para('Your Yogi Point sits in ' + c.yogiChart.rasiName + ', in ' + c.yogiChart.nakshatraName + ' Nakshatra (Pada ' + c.yogiChart.pada + '). This point is drawn from the exact midpoint relationship between your Sun and Moon, and traditionally marks where a special kind of support - a "Yogi" planet\'s blessing - is believed to help your affairs along. The planet that rules this nakshatra is considered a quiet well-wisher in your chart: someone or something connected to its themes tends to turn up at helpful moments, especially during that planet\'s own dasha periods or its transits through this point.');
+
+      heading('Bhrigu Bindu - ' + c.bbChart.rasiName + ', ' + c.bbChart.nakshatraName + ' Nakshatra, Pada ' + c.bbChart.pada, 11.5);
+      para('Your Bhrigu Bindu falls in ' + c.bbChart.rasiName + ', in ' + c.bbChart.nakshatraName + ' Nakshatra (Pada ' + c.bbChart.pada + '). Calculated as the midpoint between your Moon and Rahu, this is regarded in the Bhrigu tradition as a sensitive "destiny point" - a degree where turning points in your life (a change of direction, a decisive event) tend to cluster when it is activated by transit or dasha. It\'s less about day-to-day fortune and more about the handful of moments that end up mattering in hindsight.');
+
       // ---- Footer / disclaimer (visually distinct - italic, smaller, muted,
       // like terms & conditions fine print) ----
       ensureSpace(30);
@@ -1581,7 +1592,7 @@
       doc.line(margin, y, margin + contentW, y); y += 14;
       doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(9.5); doc.setTextColor(110, 105, 95);
       doc.text('Methodology & Disclaimer', margin, y); y += 14;
-      para('Calculations use low-precision but well-verified astronomical formulas (Meeus solar/lunar series for Sun and Moon; JPL/Standish Keplerian elements for the other planets) and the Lahiri (Chitrapaksha) ayanamsa, cross-checked against independent published ephemerides. Punya Saham and its transit activations reflect traditional Tajika (Varshaphal) technique rather than a single universally agreed method - treat this as a traditional reading, not a certainty. For time-critical decisions, verify against a Swiss-Ephemeris-based chart.', { size: 8.5, italic: true, color: [130, 125, 115] });
+      para('Calculated using established astronomical ephemeris methods (Meeus solar/lunar series for Sun and Moon; JPL/Standish Keplerian elements for the other planets) and the Lahiri (Chitrapaksha) ayanamsa, cross-checked against independent published ephemerides for accuracy. Punya Saham and its transit activations reflect traditional Tajika (Varshaphal) technique rather than a single universally agreed method - treat this as a traditional reading, not a certainty. For time-critical decisions, verify against a Swiss-Ephemeris-based chart.', { size: 8.5, italic: true, color: [130, 125, 115] });
 
       var fname = 'Fortune-Point-Transit-Report' + (c.name ? '-' + c.name.replace(/[^a-z0-9]+/gi, '-') : '') + '.pdf';
       doc.save(fname);
@@ -1683,6 +1694,7 @@
     }
   });
 </script>
+
 
 <script>
   if ('serviceWorker' in navigator) {
