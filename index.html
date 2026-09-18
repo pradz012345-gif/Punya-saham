@@ -1446,15 +1446,6 @@
     var jdEnd = jdStart + 365.25;
     var transits = computeAllTransits(target, jdStart, jdEnd);
 
-    // Flatten into one sorted timeline: {planet, start, end, peak, extendedFor (moon only)}
-    var timeline = [];
-    TRANSIT_PLANETS.forEach(function (name) {
-      transits[name].forEach(function (w) {
-        timeline.push({ planet: name, start: w.start, end: w.end, peak: w.peak });
-      });
-    });
-    timeline.sort(function (a, b) { return a.start - b.start; });
-
     // jsPDF's built-in fonts only support the WinAnsi character set - fancy
     // Unicode (arrows, prime/double-prime degree marks, curly quotes) render as
     // garbage. This strips/replaces everything PDF-unsafe while keeping the
@@ -1536,42 +1527,80 @@
 
       // ---- How to read ----
       heading('How to read this report', 13);
-      para('Each row below is a "transit window" - a span of time during which a planet is close enough to your Fortune Point\'s exact degree (within half a nakshatra pada, 1 deg 40 min, either side) for its influence to be considered active. The "peak" date/time is the closest, most exact moment within that window.');
-      para('The Moon crosses this window roughly once a month, but because each crossing lasts only about 6-7 hours, it can sometimes fall entirely at night. So for the Moon only, this report also shows a wider "extended" window (about 18-19 hours, covering the pada before and after the core one) so you have a practical chance of catching daylight hours even when the sharpest peak falls late at night. All other planets move slowly enough that this isn\'t a concern for them.');
+      para('A "transit window" is a span of time during which a planet is close enough to your Fortune Point\'s exact degree (within half a nakshatra pada, 1 deg 40 min, either side) for its influence to be considered active. The "peak" date/time is the closest, most exact moment within that window - marked with a dot on the small bar under each entry.');
+      para('The Moon crosses this window roughly once a month, but because each crossing lasts only about 6-7 hours, it can sometimes fall entirely at night. So for the Moon only, this report also shows a wider "extended" window (about 18-19 hours, covering the pada before and after the core one, shown as the lighter portion of the bar) so you have a practical chance of catching daylight hours even when the sharpest peak falls late at night. All other planets move slowly enough that this isn\'t a concern for them.');
+      para('Every transit for a given planet over the coming year is grouped together below, followed immediately by what that planet\'s activation traditionally favours - so you can see all of a planet\'s dates and what to do about them in one place, without scrolling back and forth.');
 
-      // ---- Timeline ----
-      heading('Your Transit Timeline', 13);
-      if (timeline.length === 0) {
-        para('No transits from the classical planets fall within this exact window over the coming year - this can happen, especially for the slower-moving planets (Mars, Jupiter, Saturn), depending on where they currently sit relative to your Fortune Point. Check back for a report covering the following year.');
-      }
-      var rowPad = 8;
-      timeline.forEach(function (item) {
-        var hasExt = item.planet === 'moon';
-        var ext = hasExt ? transits.moonExtended.find(function (w) { return Math.abs(w.peak - item.peak) < 0.5; }) : null;
-        var rowH = rowPad * 2 + 13 + 12 + 12 + (ext ? 12 : 0);
-        ensureSpace(rowH + 6);
+      // ---- Compact visual bar for one transit window: light track = the wider
+      // window shown (extended, for Moon), darker segment = the core +-1deg40'
+      // window, gold dot = the exact peak. For non-Moon planets there is no
+      // extended window, so the whole track is the core window. ----
+      function transitWindowCard(item, ext) {
+        var pad = 9, barH = 7;
+        var rowH = pad * 2 + 13 + (barH + 10) + 11 + (ext ? 11 : 0);
+        ensureSpace(rowH + 8);
         doc.setFillColor(246, 240, 222);
         doc.roundedRect(margin, y, contentW, rowH, 3, 3, 'F');
-        var ty = y + rowPad + 10;
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(30, 20, 10);
-        doc.text(PLANET_DISPLAY[item.planet], margin + 10, ty); ty += 13;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(80, 80, 80);
-        doc.text('Peak: ' + fmtIST(item.peak), margin + 10, ty); ty += 12;
-        doc.setFontSize(8.5); doc.setTextColor(120, 120, 120);
-        doc.text(pdfSafe('Window: ' + fmtIST(item.start) + '  to  ' + fmtIST(item.end)), margin + 10, ty); ty += 12;
+        var ty = y + pad + 9;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(30, 20, 10);
+        doc.text('Peak: ' + fmtIST(item.peak), margin + 10, ty);
+
+        var barX = margin + 10, barW = contentW - 20, barY = ty + 8;
+        var totalStart = ext ? ext.start : item.start;
+        var totalEnd = ext ? ext.end : item.end;
+        function frac(t) { return totalEnd > totalStart ? Math.max(0, Math.min(1, (t - totalStart) / (totalEnd - totalStart))) : 0.5; }
+        doc.setFillColor(232, 215, 175);
+        doc.roundedRect(barX, barY, barW, barH, barH / 2, barH / 2, 'F');
         if (ext) {
-          doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(140, 110, 50);
+          var cx1 = barX + frac(item.start) * barW, cx2 = barX + frac(item.end) * barW;
+          doc.setFillColor(201, 162, 80);
+          doc.roundedRect(cx1, barY, Math.max(cx2 - cx1, 4), barH, barH / 2, barH / 2, 'F');
+        }
+        var peakX = barX + frac(item.peak) * barW;
+        doc.setFillColor(178, 118, 18);
+        doc.circle(peakX, barY + barH / 2, 4, 'F');
+
+        ty = barY + barH + 13;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.3); doc.setTextColor(115, 108, 95);
+        doc.text(pdfSafe('Window: ' + fmtIST(item.start) + '  to  ' + fmtIST(item.end)), margin + 10, ty);
+        if (ext) {
+          ty += 11;
+          doc.setFont('helvetica', 'italic'); doc.setFontSize(8.3); doc.setTextColor(140, 110, 50);
           doc.text(pdfSafe('Extended (daylight-friendly): ' + fmtIST(ext.start) + '  to  ' + fmtIST(ext.end)), margin + 10, ty);
         }
-        y += rowH + 6;
-      });
+        y += rowH + 8;
+      }
 
-      // ---- Planet guide ----
-      doc.addPage(); y = margin;
-      heading('Planet-by-Planet Guide', 15);
+      // ---- Transits + guidance, grouped by planet (Moon first - it transits
+      // most often - down to the slowest-moving Ketu), each planet's full set
+      // of dates followed immediately by what to do during them. ----
+      heading('Your Transits, Planet by Planet', 15);
       TRANSIT_PLANETS.forEach(function (name) {
-        heading(PLANET_DISPLAY[name], 11.5);
+        var windows = transits[name];
+        var countLabel = windows.length === 0 ? '' : '  (' + windows.length + (windows.length === 1 ? ' transit' : ' transits') + ' this year)';
+        ensureSpace(30);
+        heading(PLANET_DISPLAY[name] + countLabel, 13);
+
+        if (windows.length === 0) {
+          ensureSpace(28);
+          doc.setFillColor(238, 232, 214);
+          doc.roundedRect(margin, y, contentW, 26, 3, 3, 'F');
+          doc.setFont('helvetica', 'italic'); doc.setFontSize(9.3); doc.setTextColor(120, 110, 90);
+          doc.text(pdfSafe('No ' + PLANET_DISPLAY[name] + ' transit activates your Fortune Point within the next year.'), margin + 10, y + 17);
+          y += 26 + 10;
+        } else {
+          windows.forEach(function (w) {
+            var ext = name === 'moon' ? transits.moonExtended.find(function (e) { return Math.abs(e.peak - w.peak) < 0.5; }) : null;
+            transitWindowCard(w, ext);
+          });
+        }
+
         para(PLANET_PARAGRAPHS[name]);
+
+        ensureSpace(16);
+        doc.setDrawColor(225, 215, 195); doc.setLineWidth(0.5);
+        doc.line(margin, y, margin + contentW, y);
+        y += 18;
       });
 
       // ---- Your other Fortune Points (Yogi Point & Bhrigu Bindu) ----
