@@ -1374,6 +1374,65 @@
     ketu: "Ketu's transit over your Fortune Point turns your attention inward, away from acquiring and toward letting go. This isn't the ideal window for you to make a major purchase — it tends to favour simplicity over accumulation. It's a good time for quiet, focused work — research, or finally finishing something you've been putting off without much fanfare. Socially, you may feel a natural pull toward solitude rather than gatherings, and that's worth honouring. Meditation, a retreat, or simply decluttering your space will likely feel more rewarding than usual right now."
   };
 
+  // Same guidance as PLANET_PARAGRAPHS, broken into short category lines for
+  // the report's "What to do" block under each planet's table.
+  var PLANET_CATEGORIES = {
+    moon: {
+      relationships: "A good time to reach out to your mother, or spend unhurried time with the maternal figures in your life.",
+      career: "Better suited to steady, familiar tasks than big new starts — let routine carry you through this window.",
+      money: "Silver, kitchenware, or something comforting for the home tends to feel worthwhile if bought now.",
+      wellness: "Meditation, swimming, or simply slowing down suits this window especially well."
+    },
+    sun: {
+      relationships: "Reach out to your father or the senior figures in your family — this window favours reconnecting with them.",
+      career: "Put yourself forward — an application, an approval, or a step into leadership is well supported now.",
+      money: "Gold, or something in warm red and copper tones, carries a little extra significance if acquired now.",
+      wellness: "A walk in the sun, or a health check you've been postponing, fits naturally into this window."
+    },
+    mercury: {
+      relationships: "A good moment to clear the air with a sibling or a close friend — conversations land the way you intend.",
+      career: "Favourable for signing a contract, closing a negotiation, or starting a course you've been considering.",
+      money: "Books, electronics, or anything you've been meaning to write or publish fall under this window's good graces.",
+      wellness: "Your mind and words carry a little more weight than usual — a good time to think and communicate clearly."
+    },
+    venus: {
+      relationships: "Marriage-related events and romantic gestures carry extra favour; a strained relationship is more likely to mend now.",
+      career: "A good time to bring more beauty, taste or creative sense into your work.",
+      money: "Jewellery, art, or a vehicle chosen as much for pleasure as for use suits this window well.",
+      wellness: "A good time to start something creative for yourself — dance, art, music, or simply more care in how you look after yourself."
+    },
+    mars: {
+      relationships: "Your relationship with siblings may come into focus — approach it assertively, but gently.",
+      career: "Favours bold but careful action on technical or competitive work that needs courage.",
+      money: "A good window to move forward on a property purchase or a new vehicle, if you've been weighing one.",
+      wellness: "Your energy naturally favours starting a fitness routine, or anything physically demanding, right now."
+    },
+    jupiter: {
+      relationships: "A meaningful time for relationships with teachers or mentors, marriage-related conversations, and — if it applies — good news involving your children.",
+      career: "A broader window (Jupiter moves slowly) well suited to higher education, deepening a mentorship, or long-term planning.",
+      money: "Gold and yellow-toned purchases made now are considered particularly auspicious; putting long-term finances in order also suits this window.",
+      wellness: "A little generosity on your part tends to come back around during this stretch."
+    },
+    saturn: {
+      relationships: "You may find yourself drawn closer to responsibilities toward elders in your family.",
+      career: "Asks more discipline at work, particularly steady, service-oriented effort that pays off later rather than immediately.",
+      money: "Favours patience over speed — a good window for a long-term investment or real-estate decision, not an impulsive one.",
+      wellness: "A structured routine, even something like fasting or a fixed exercise schedule, suits you especially well right now."
+    },
+    rahu: {
+      relationships: "You may find yourself reconnecting with someone at a distance, or from another country.",
+      career: "A good window to explore an unconventional direction in your career you hadn't seriously considered before.",
+      money: "Stay a little mindful of impulsiveness with spending — Rahu's gifts are real, but they ask for some discernment.",
+      wellness: "Technology, or something foreign or unconventional, tends to draw you in during this window."
+    },
+    ketu: {
+      relationships: "Socially, you may feel a natural pull toward solitude rather than gatherings — that's worth honouring.",
+      career: "Favours quiet, focused work — research, or finally finishing something you've been putting off.",
+      money: "Not the ideal window for a major purchase — simplicity suits you more than acquisition right now.",
+      wellness: "Meditation, a retreat, or simply decluttering your space will likely feel more rewarding than usual."
+    }
+  };
+
   function jdNowUTC() {
     var d = new Date();
     return julianDayFromDate(d);
@@ -1394,6 +1453,46 @@
   function fmtISTDate(jd) {
     var d = jdToIST(jd);
     return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' });
+  }
+  function fmtISTTimeOnly(jd) {
+    var d = jdToIST(jd);
+    return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+  // Calendar year/month/day of a Julian Day, as seen in IST - used to place
+  // month ticks on the year-timeline chart at real calendar month boundaries.
+  function istYMD(jd) {
+    var d = jdToIST(jd);
+    var fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+    var parts = fmt.formatToParts(d);
+    var o = {};
+    parts.forEach(function (p) { o[p.type] = p.value; });
+    return { y: +o.year, m: +o.month, d: +o.day };
+  }
+  // Julian Day for local midnight IST on a given calendar date (IST = UTC+5:30,
+  // so IST midnight is 18:30 UTC the previous day).
+  function jdForISTMidnight(y, m, d) {
+    var utcMs = Date.UTC(y, m - 1, d, 0, 0, 0) - 5.5 * 3600000;
+    return julianDayFromDate(new Date(utcMs));
+  }
+  // "6h 40m" for a short window, "18 days" for a long one (Jupiter/Saturn/
+  // retrograde loops can run for weeks).
+  function fmtDuration(startJd, endJd) {
+    var hours = (endJd - startJd) * 24;
+    if (hours < 48) {
+      var h = Math.floor(hours), m = Math.round((hours - h) * 60);
+      if (m === 60) { h += 1; m = 0; }
+      return h + 'h' + (m ? ' ' + m + 'm' : '');
+    }
+    return Math.round(hours / 24) + ' days';
+  }
+  // Times only if the window falls on one calendar day (IST); dates if it
+  // spans more than one day.
+  function fmtWindowRange(startJd, endJd) {
+    var s = istYMD(startJd), e = istYMD(endJd);
+    var sameDay = s.y === e.y && s.m === e.m && s.d === e.d;
+    return sameDay
+      ? fmtISTTimeOnly(startJd) + ' - ' + fmtISTTimeOnly(endJd)
+      : fmtISTDate(startJd) + ' - ' + fmtISTDate(endJd);
   }
 
   function loadScript(src) {
@@ -1527,53 +1626,107 @@
 
       // ---- How to read ----
       heading('How to read this report', 13);
-      para('A "transit window" is a span of time during which a planet is close enough to your Fortune Point\'s exact degree (within half a nakshatra pada, 1 deg 40 min, either side) for its influence to be considered active. The "peak" date/time is the closest, most exact moment within that window - marked with a dot on the small bar under each entry.');
-      para('The Moon crosses this window roughly once a month, but because each crossing lasts only about 6-7 hours, it can sometimes fall entirely at night. So for the Moon only, this report also shows a wider "extended" window (about 18-19 hours, covering the pada before and after the core one, shown as the lighter portion of the bar) so you have a practical chance of catching daylight hours even when the sharpest peak falls late at night. All other planets move slowly enough that this isn\'t a concern for them.');
-      para('Every transit for a given planet over the coming year is grouped together below, followed immediately by what that planet\'s activation traditionally favours - so you can see all of a planet\'s dates and what to do about them in one place, without scrolling back and forth.');
+      para('Each planet below gets one self-contained section: first a year-long timeline showing roughly when its activations fall, then a table with the exact date, duration and time window of each one, then what that planet\'s activation traditionally favours - broken into Relationships, Career, Money and Wellness - so everything about a planet is together in one place.');
+      para('A "transit window" is a span of time during which a planet is close enough to your Fortune Point\'s exact degree (within half a nakshatra pada, 1 deg 40 min, either side) for its influence to be considered active. The Moon crosses this window roughly once a month, but because each crossing lasts only about 6-7 hours, it can sometimes fall entirely at night - so for the Moon only, the table also shows a wider "extended" window (about 18-19 hours) giving you a practical chance of catching daylight hours.');
+      para('If a planet does not activate your Fortune Point at all in the coming year - this happens for the slower-moving ones, Jupiter and Saturn especially, depending on where they currently sit - that is called out explicitly rather than left blank.');
 
-      // ---- Compact visual bar for one transit window: light track = the wider
-      // window shown (extended, for Moon), darker segment = the core +-1deg40'
-      // window, gold dot = the exact peak. For non-Moon planets there is no
-      // extended window, so the whole track is the core window. ----
-      function transitWindowCard(item, ext) {
-        var pad = 9, barH = 7;
-        var rowH = pad * 2 + 13 + (barH + 10) + 11 + (ext ? 11 : 0);
-        ensureSpace(rowH + 8);
-        doc.setFillColor(246, 240, 222);
-        doc.roundedRect(margin, y, contentW, rowH, 3, 3, 'F');
-        var ty = y + pad + 9;
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(30, 20, 10);
-        doc.text('Peak: ' + fmtIST(item.peak), margin + 10, ty);
+      var MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-        var barX = margin + 10, barW = contentW - 20, barY = ty + 8;
-        var totalStart = ext ? ext.start : item.start;
-        var totalEnd = ext ? ext.end : item.end;
-        function frac(t) { return totalEnd > totalStart ? Math.max(0, Math.min(1, (t - totalStart) / (totalEnd - totalStart))) : 0.5; }
-        doc.setFillColor(232, 215, 175);
-        doc.roundedRect(barX, barY, barW, barH, barH / 2, barH / 2, 'F');
-        if (ext) {
-          var cx1 = barX + frac(item.start) * barW, cx2 = barX + frac(item.end) * barW;
-          doc.setFillColor(201, 162, 80);
-          doc.roundedRect(cx1, barY, Math.max(cx2 - cx1, 4), barH, barH / 2, barH / 2, 'F');
+      // ---- Year-long timeline strip: a single bar spanning the report's 12
+      // months, month ticks along the bottom, and a small gold block for every
+      // transit window so the reader can see at a glance roughly when in the
+      // year this planet's activations cluster. ----
+      function yearTimelineChart(windows) {
+        var trackH = 10;
+        ensureSpace(trackH + 26);
+        var trackX = margin, trackW = contentW;
+        var trackY = y + 2;
+
+        doc.setFillColor(236, 229, 208);
+        doc.roundedRect(trackX, trackY, trackW, trackH, trackH / 2, trackH / 2, 'F');
+
+        var startYMD = istYMD(jdStart);
+        var cy = startYMD.y, cm = startYMD.m;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(140, 132, 115);
+        for (var i = 0; i < 14; i++) {
+          var tickJd = jdForISTMidnight(cy, cm, 1);
+          if (tickJd > jdEnd) break;
+          var frac = (tickJd - jdStart) / (jdEnd - jdStart);
+          if (frac >= 0 && frac <= 1) {
+            var tx = trackX + frac * trackW;
+            doc.setDrawColor(205, 195, 170); doc.setLineWidth(0.5);
+            doc.line(tx, trackY - 3, tx, trackY + trackH + 3);
+            doc.text(MONTH_ABBR[cm - 1] + "'" + String(cy).slice(2), tx, trackY + trackH + 11, { align: 'center' });
+          }
+          cm++; if (cm > 12) { cm = 1; cy++; }
         }
-        var peakX = barX + frac(item.peak) * barW;
-        doc.setFillColor(178, 118, 18);
-        doc.circle(peakX, barY + barH / 2, 4, 'F');
 
-        ty = barY + barH + 13;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.3); doc.setTextColor(115, 108, 95);
-        doc.text(pdfSafe('Window: ' + fmtIST(item.start) + '  to  ' + fmtIST(item.end)), margin + 10, ty);
-        if (ext) {
-          ty += 11;
-          doc.setFont('helvetica', 'italic'); doc.setFontSize(8.3); doc.setTextColor(140, 110, 50);
-          doc.text(pdfSafe('Extended (daylight-friendly): ' + fmtIST(ext.start) + '  to  ' + fmtIST(ext.end)), margin + 10, ty);
-        }
-        y += rowH + 8;
+        windows.forEach(function (w) {
+          var f1 = Math.max(0, Math.min(1, (w.start - jdStart) / (jdEnd - jdStart)));
+          var f2 = Math.max(0, Math.min(1, (w.end - jdStart) / (jdEnd - jdStart)));
+          var x1 = trackX + f1 * trackW, x2 = trackX + f2 * trackW;
+          var bw = Math.max(x2 - x1, 3.5);
+          var cx = (x1 + x2) / 2;
+          doc.setFillColor(178, 118, 18);
+          doc.roundedRect(cx - bw / 2, trackY, bw, trackH, 2, 2, 'F');
+        });
+
+        y = trackY + trackH + 11 + 12;
       }
 
-      // ---- Transits + guidance, grouped by planet (Moon first - it transits
-      // most often - down to the slowest-moving Ketu), each planet's full set
-      // of dates followed immediately by what to do during them. ----
+      // ---- Table of every transit for this planet: Date / Duration / Peak
+      // Window / Extended Window (Moon only, "-" for everyone else). ----
+      function transitTable(windows, moonExt) {
+        var fracs = [0.19, 0.13, 0.36, 0.32];
+        var colX = [margin];
+        var widths = fracs.map(function (f) { return f * contentW; });
+        for (var i = 1; i < widths.length; i++) colX.push(colX[i - 1] + widths[i - 1]);
+        var headerH = 18, rowH = 18;
+
+        ensureSpace(headerH + rowH);
+        doc.setFillColor(58, 46, 20);
+        doc.rect(margin, y, contentW, headerH, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(245, 238, 220);
+        ['Date', 'Duration', 'Peak Window', 'Extended Window'].forEach(function (h, i) { doc.text(h, colX[i] + 6, y + 12); });
+        y += headerH;
+
+        windows.forEach(function (w, idx) {
+          ensureSpace(rowH);
+          if (idx % 2 === 1) { doc.setFillColor(246, 240, 222); doc.rect(margin, y, contentW, rowH, 'F'); }
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(50, 45, 35);
+          doc.text(fmtISTDate(w.peak), colX[0] + 6, y + 12);
+          doc.text(fmtDuration(w.start, w.end), colX[1] + 6, y + 12);
+          doc.text(pdfSafe(fmtWindowRange(w.start, w.end)), colX[2] + 6, y + 12);
+          var ext = moonExt ? moonExt.find(function (e) { return Math.abs(e.peak - w.peak) < 0.5; }) : null;
+          doc.text(ext ? pdfSafe(fmtWindowRange(ext.start, ext.end)) : '-', colX[3] + 6, y + 12);
+          y += rowH;
+        });
+        y += 12;
+      }
+
+      // ---- "What to do" block: the same guidance as before, broken into four
+      // short, specific lines instead of one long paragraph, sitting right
+      // under this planet's table. ----
+      function whatToDoBlock(name) {
+        var cats = PLANET_CATEGORIES[name];
+        var rows = [['relationships', 'Relationships & Family'], ['career', 'Career & Growth'], ['money', 'Money & Purchases'], ['wellness', 'Personal & Wellness']];
+        ensureSpace(16);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(120, 80, 20);
+        doc.text('What to do during this transit', margin, y); y += 14;
+        rows.forEach(function (pair) {
+          ensureSpace(24);
+          doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(150, 105, 30);
+          doc.text(pair[1] + ':', margin + 2, y); y += 11;
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8); doc.setTextColor(60, 55, 45);
+          var lines = doc.splitTextToSize(pdfSafe(cats[pair[0]]), contentW - 6);
+          lines.forEach(function (line) { ensureSpace(11); doc.text(line, margin + 2, y); y += 11; });
+          y += 4;
+        });
+      }
+
+      // ---- One self-contained section per planet (Moon first - it transits
+      // most often - down to the slowest-moving Ketu): timeline, table, then
+      // what to do, all together. ----
       heading('Your Transits, Planet by Planet', 15);
       TRANSIT_PLANETS.forEach(function (name) {
         var windows = transits[name];
@@ -1589,15 +1742,13 @@
           doc.text(pdfSafe('No ' + PLANET_DISPLAY[name] + ' transit activates your Fortune Point within the next year.'), margin + 10, y + 17);
           y += 26 + 10;
         } else {
-          windows.forEach(function (w) {
-            var ext = name === 'moon' ? transits.moonExtended.find(function (e) { return Math.abs(e.peak - w.peak) < 0.5; }) : null;
-            transitWindowCard(w, ext);
-          });
+          yearTimelineChart(windows);
+          transitTable(windows, name === 'moon' ? transits.moonExtended : null);
+          whatToDoBlock(name);
         }
 
-        para(PLANET_PARAGRAPHS[name]);
-
         ensureSpace(16);
+        y += 8;
         doc.setDrawColor(225, 215, 195); doc.setLineWidth(0.5);
         doc.line(margin, y, margin + contentW, y);
         y += 18;
