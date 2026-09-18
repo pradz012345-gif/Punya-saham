@@ -1,0 +1,14 @@
+{
+  "name": "Punya Saham — Sensitive Points in Astrology",
+  "short_name": "Punya Saham",
+  "description": "Vedic sensitive-point calculator: Punya Saham, Yogi Point and Bhrigu Bindu from birth date, time and place.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#12142b",
+  "theme_color": "#12142b",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Punya Saham — Sensitive Points in Astrology</title>
+<meta name="description" content="Vedic sensitive-point calculator: Punya Saham, Yogi Point and Bhrigu Bindu from birth date, time and place.">
+<meta name="theme-color" content="#12142b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root {
+    --bg: #12142b;
+    --surface: #1a1d3d;
+    --surface-2: #22254a;
+    --border: #34386b;
+    --text: #f2efe4;
+    --text-muted: #a7a9d1;
+    --accent: #d9ab4c;
+    --accent-soft: #d9ab4c22;
+    --accent-2: #7fb0a0;
+    --danger: #d98066;
+    --shadow: 0 18px 40px -20px rgba(0,0,0,0.55);
+  }
+  :root[data-theme="light"] {
+    --bg: #faf6ec;
+    --surface: #ffffff;
+    --surface-2: #f3ecd9;
+    --border: #e2d7b8;
+    --text: #241f36;
+    --text-muted: #6b6584;
+    --accent: #a9711b;
+    --accent-soft: #a9711b1a;
+    --accent-2: #3f7a68;
+    --danger: #b34a2f;
+    --shadow: 0 18px 40px -22px rgba(80,60,20,0.28);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #faf6ec;
+      --surface: #ffffff;
+      --surface-2: #f3ecd9;
+      --border: #e2d7b8;
+      --text: #241f36;
+      --text-muted: #6b6584;
+      --accent: #a9711b;
+      --accent-soft: #a9711b1a;
+      --accent-2: #3f7a68;
+      --danger: #b34a2f;
+      --shadow: 0 18px 40px -22px rgba(80,60,20,0.28);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Work Sans', system-ui, sans-serif;
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 28px 48px;
+    display: flex;
+    justify-content: center;
+  }
+  main { width: 100%; max-width: 640px; }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+  h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(32px, 8vw, 44px);
+    line-height: 1.05;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.55;
+    margin: 0 0 28px;
+    max-width: 52ch;
+  }
+  h1 .brand-sub {
+    font-family: 'Work Sans', sans-serif;
+    font-weight: 500;
+    font-size: 0.42em;
+    color: var(--text-muted);
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .lang-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 24px;
+  }
+  .lang-toggle-label {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .lang-btn {
+    font-family: 'Work Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 14px;
+    cursor: pointer;
+  }
+  .lang-btn.active {
+    background: var(--accent);
+    color: #1a1408;
+    border-color: var(--accent);
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: var(--shadow);
+  }
+  .card + .card { margin-top: 18px; }
+
+  .card h2 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .field { margin-bottom: 16px; position: relative; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
+
+  input[type="text"], input[type="date"], input[type="time"], input[type="number"], select {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 11px 12px;
+    font-family: 'Work Sans', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    accent-color: var(--accent);
+  }
+  input:focus, select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+  .hint.is-selected { color: var(--accent); }
+
+  .place-results {
+    list-style: none;
+    margin: 4px 0 0;
+    padding: 4px;
+    position: absolute;
+    left: 0; right: 0; top: 100%;
+    z-index: 20;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+  }
+  .place-results li {
+    padding: 9px 10px;
+    font-size: 14px;
+    color: var(--text);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .place-results li:hover,
+  .place-results li.active {
+    background: var(--accent);
+    color: #1a1408;
+  }
+  .place-results li.no-results,
+  .place-results li.loading {
+    color: var(--text-muted);
+    cursor: default;
+  }
+  .place-results li.no-results:hover,
+  .place-results li.loading:hover {
+    background: transparent;
+    color: var(--text-muted);
+  }
+
+  .btn {
+    width: 100%;
+    background: var(--accent);
+    color: #1a1408;
+    border: none;
+    border-radius: 10px;
+    padding: 13px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'Work Sans', sans-serif;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .mep-list { display: flex; flex-direction: column; gap: 12px; }
+  .mep-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-2);
+  }
+  .mep-row.highlight {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .mep-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    writing-mode: horizontal-tb;
+  }
+  .mep-main .name {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.15;
+  }
+  .mep-main .name .ta-name {
+    font-family: 'Work Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .mep-main .sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .mep-deg {
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 14px;
+    text-align: right;
+    color: var(--text);
+  }
+  .mep-deg .pada-tag {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 11px;
+    background: var(--accent);
+    color: #1a1408;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+
+  .guidance {
+    border-top: 1px dashed var(--border);
+    margin-top: 18px;
+    padding-top: 16px;
+  }
+  .guidance .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    margin-bottom: 8px;
+  }
+  .guidance p { margin: 0; line-height: 1.6; font-size: 14.5px; }
+  .guidance .placeholder-note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  #results { display: none; }
+  #results.show { display: block; }
+
+  .footer-note {
+    margin-top: 22px;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .theme-toggle {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    right: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 999px;
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+  }
+
+  .error-box {
+    background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+    border: 1px solid var(--danger);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13.5px;
+    margin-bottom: 16px;
+  }
+
+  .point-card { margin-top: 18px; }
+  .point-header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+  .point-header h2 { margin: 0; }
+  .point-kicker { font-size: 12px; color: var(--text-muted); margin: 0 0 16px; line-height: 1.5; }
+
+  .single-point {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+
+  .benefits-list { margin: 0; padding-left: 18px; }
+  .benefits-list li { font-size: 14px; line-height: 1.6; margin-bottom: 4px; }
+
+  .locked-group { position: relative; }
+  .locked-stack { display: flex; flex-direction: column; gap: 12px; filter: blur(5px); user-select: none; pointer-events: none; opacity: 0.75; }
+  .lock-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    padding: 20px;
+  }
+  .lock-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #1a1408;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .lock-overlay p { margin: 0; font-size: 13.5px; color: var(--text); max-width: 34ch; }
+  .unlock-btn {
+    background: var(--accent);
+    color: #1a1408;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 14px;
+    font-family: 'Work Sans', sans-serif;
+    cursor: pointer;
+  }
+  .unlock-btn:hover { filter: brightness(1.08); }
+
+  .tech-details { margin-top: 18px; }
+  .tech-details summary {
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.03em;
+  }
+  .tech-details summary::marker { color: var(--accent); }
+  .tech-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .tech-row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; }
+  .tech-row span:last-child { color: var(--text); }
+</style>
+
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle color theme" type="button">&#9789;</button>
+
+<main>
+  <p class="eyebrow">Vedic &middot; Jyotisha</p>
+  <h1>Punya Saham <span class="brand-sub">(Sensitive Points in Astrology)</span></h1>
+  <p class="subtitle">Enter a birth date, time and place. This locates the chart's key sensitive points &mdash; degrees that classical and modern Jyotisha treat as especially significant &mdash; and marks which rasi, nakshatra and pada each falls in.</p>
+
+  <div class="lang-toggle" role="group" aria-label="Regional language for nakshatra names">
+    <span class="lang-toggle-label">Show names in:</span>
+    <button type="button" class="lang-btn" data-reg-lang="ta">Tamil</button>
+    <button type="button" class="lang-btn" data-reg-lang="te">Telugu</button>
+  </div>
+
+  <form class="card" id="mepForm">
+    <h2>Birth details</h2>
+    <div id="errorBox" class="error-box" hidden></div>
+
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" placeholder="Enter your name" autocomplete="name" />
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="dob">Date of birth</label>
+        <input type="date" id="dob" required />
+      </div>
+      <div class="field">
+        <label for="tob">Time of birth</label>
+        <input type="time" id="tob" step="60" required />
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="placeSearch">Place of birth &mdash; search any city or town, worldwide</label>
+      <input type="text" id="placeSearch" placeholder="Start typing e.g. Trichy, Salem, Singapore&hellip;" autocomplete="off" />
+      <ul id="placeResults" class="place-results" hidden></ul>
+      <p class="hint" id="placeSelectedHint">Type at least 3 letters. Works for any place worldwide — Indian results fill in the timezone automatically (IST for all of India); other countries ask you to confirm the UTC offset.</p>
+    </div>
+
+    <details class="tech-details">
+      <summary>Not in India, or search not working? Use a quick pick or exact coordinates</summary>
+      <div class="field" style="margin-top:12px;">
+        <select id="place">
+          <option value="custom" selected>Custom coordinates&hellip;</option>
+          <optgroup label="Quick list">
+            <option value="13.0827,80.2707,5.5,Chennai">Chennai</option>
+            <option value="12.9716,77.5946,5.5,Bengaluru">Bengaluru</option>
+            <option value="19.0760,72.8777,5.5,Mumbai">Mumbai</option>
+            <option value="28.6139,77.2090,5.5,Delhi">Delhi</option>
+            <option value="22.5726,88.3639,5.5,Kolkata">Kolkata</option>
+          </optgroup>
+          <optgroup label="Outside India">
+            <option value="1.3521,103.8198,8,Singapore">Singapore</option>
+            <option value="25.2048,55.2708,4,Dubai">Dubai</option>
+            <option value="40.7128,-74.0060,-5,New York">New York</option>
+            <option value="51.5072,-0.1276,0,London">London</option>
+            <option value="37.7749,-122.4194,-8,San Francisco">San Francisco</option>
+            <option value="1.2900,103.8500,8,Kuala Lumpur">Kuala Lumpur</option>
+          </optgroup>
+        </select>
+      </div>
+    </details>
+
+    <div id="customCoords" hidden>
+      <div class="row2">
+        <div class="field">
+          <label for="lat">Latitude (&deg;, + North)</label>
+          <input type="number" id="lat" step="0.0001" placeholder="13.0827" />
+        </div>
+        <div class="field">
+          <label for="lon">Longitude (&deg;, + East)</label>
+          <input type="number" id="lon" step="0.0001" placeholder="80.2707" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="tz">UTC offset (hours, e.g. 5.5 for IST)</label>
+        <input type="number" id="tz" step="0.25" placeholder="5.5" />
+      </div>
+    </div>
+
+    <button class="btn" type="submit">Find my sensitive points</button>
+  </form>
+
+  <section id="results">
+    <h2 id="resultsHeading" style="font-family:'Cormorant Garamond',Georgia,serif; font-size:26px; margin:26px 0 4px;">Chart</h2>
+
+    <!-- Free: Punya Saham -->
+    <div class="card point-card">
+      <div class="point-header"><h2>Punya Saham &mdash; your Sensitive Point</h2></div>
+      <p class="point-kicker">The classical Tajika "point of merit" (Punya Saham). A strong placement is read as a protective, fortune-bringing influence through the year; a weak one calls for more caution.</p>
+      <div class="single-point" id="sahamPoint"></div>
+      <p class="hint" id="sahamNameLine" style="margin:-6px 0 14px;"></p>
+      <div class="guidance">
+        <p class="tag">Favourable to initiate &mdash; Sensitive Point nakshatra</p>
+        <p id="guidanceText"></p>
+        <p class="placeholder-note">Placeholder guidance &mdash; replace with your own written text per nakshatra.</p>
+      </div>
+      <ul class="benefits-list" id="sahamBenefits"></ul>
+      <p class="placeholder-note" style="margin-top:12px;">Coming soon (paid): a one-year report of exact dates each planet transits your Sensitive Point, with what that transit favours.</p>
+    </div>
+
+    <!-- Locked: Yogi Point -->
+    <div class="card point-card locked-group" data-point="yogi">
+      <div class="point-header"><h2>Yogi Point</h2></div>
+      <p class="point-kicker">The planet that brings easy prosperity and marks favourable periods in its dasha.</p>
+      <div class="locked-stack">
+        <div class="single-point"><div class="mep-label">Yogi</div><div class="mep-main"><div class="name">Nakshatra name</div><div class="sub">Rasi &middot; degree</div></div><div class="mep-deg">00&deg;00&prime;00&Prime;<br><span class="pada-tag">Pada 0</span></div></div>
+      </div>
+      <div class="lock-overlay">
+        <div class="lock-icon">&#128274;</div>
+        <p>See your Yogi planet and what it favours.</p>
+        <button class="unlock-btn" type="button" data-unlock="yogi">Unlock &mdash; &#8377;10</button>
+      </div>
+    </div>
+
+    <!-- Locked: Bhrigu Bindu -->
+    <div class="card point-card locked-group" data-point="bb">
+      <div class="point-header"><h2>Bhrigu Bindu</h2></div>
+      <p class="point-kicker">Your karmic activation point &mdash; where major life turning points tend to concentrate.</p>
+      <div class="locked-stack">
+        <div class="single-point"><div class="mep-label">Bhrigu Bindu</div><div class="mep-main"><div class="name">Nakshatra name</div><div class="sub">Rasi &middot; degree</div></div><div class="mep-deg">00&deg;00&prime;00&Prime;<br><span class="pada-tag">Pada 0</span></div></div>
+      </div>
+      <div class="lock-overlay">
+        <div class="lock-icon">&#128274;</div>
+        <p>See your karmic activation point and its house/nakshatra meaning.</p>
+        <button class="unlock-btn" type="button" data-unlock="bb">Unlock &mdash; &#8377;10</button>
+      </div>
+    </div>
+
+    <details class="tech-details">
+      <summary>Technical chart details (Lagna / Surya / Chandra)</summary>
+      <div class="tech-list" id="techList"></div>
+    </details>
+  </section>
+
+  <p class="footer-note">Calculations use Meeus low-precision solar/lunar formulas and the Lahiri (Chitrapaksha) ayanamsa, accurate to well within one nakshatra pada (3&deg;20&prime;) for any date in the modern era. For time-critical predictive work, verify against a Swiss-Ephemeris-based chart. Punya Saham, Yogi Point and Bhrigu Bindu reflect traditional and lineage-based techniques rather than a single universally agreed method &mdash; treat results as a traditional reading, not a certainty. Tamil nakshatra names shown are the commonly used equivalents; Hindi and Telugu names are largely the same as the Sanskrit names above and are marked for your review.</p>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- theme toggle ----------
+  var root = document.documentElement;
+  var toggle = document.getElementById('themeToggle');
+  function applyStoredTheme() {
+    try {
+      var saved = localStorage.getItem('mep-theme');
+      if (saved) root.setAttribute('data-theme', saved);
+    } catch (e) {}
+  }
+  applyStoredTheme();
+  toggle.addEventListener('click', function () {
+    var current = root.getAttribute('data-theme');
+    var isDark = current === 'dark' || (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    var next = isDark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('mep-theme', next); } catch (e) {}
+  });
+
+  // ---------- place selector ----------
+  var placeSelect = document.getElementById('place');
+  var customCoords = document.getElementById('customCoords');
+  placeSelect.addEventListener('change', function () {
+    customCoords.hidden = placeSelect.value !== 'custom';
+    // A manual quick-pick/custom choice overrides any earlier live-search pick.
+    searchSelectedPlace = null;
+  });
+
+  // ---------- live place search (OpenStreetMap Nominatim) ----------
+  // Free, no signup, worldwide coverage. All of India uses one timezone
+  // (UTC+5:30 / IST), so an India result is used straight away. For a
+  // non-India result we can't safely guess the UTC offset in general
+  // (many countries span multiple zones and/or shift for daylight saving),
+  // so we prefill a best-effort guess for single-zone countries into the
+  // manual coordinate fields and ask the person to confirm it. Nominatim's
+  // usage policy asks for roughly 1 request/second max from the shared
+  // public server — the debounce below keeps us well under that even
+  // while someone types.
+  var placeSearchInput = document.getElementById('placeSearch');
+  var placeResultsEl = document.getElementById('placeResults');
+  var placeSelectedHintEl = document.getElementById('placeSelectedHint');
+  var searchSelectedPlace = null; // { lat, lon, tz, label } once an India result is chosen
+  var searchDebounceTimer = null;
+  var searchRequestSeq = 0;
+
+  // Best-effort standard-time UTC offset for countries that use a single
+  // timezone year-round (no DST, no internal split). Left out entirely for
+  // countries where a single number would often be wrong (US, Canada,
+  // Australia, Russia, Brazil, EU with DST, etc.) — those fall back to an
+  // empty, must-confirm field instead of a silently wrong guess.
+  var COUNTRY_TZ_GUESS = {
+    in: 5.5, lk: 5.5, np: 5.75, bd: 6, bt: 6, mm: 6.5,
+    sg: 8, my: 8, ae: 4, sa: 3, qa: 3, om: 4, kw: 3, bh: 3,
+    jp: 9, kr: 9, cn: 8, hk: 8, tw: 8, th: 7, vn: 7, ph: 8,
+    id: 7, pk: 5, af: 4.5, ir: 3.5,
+    ke: 3, tz: 3, ug: 3, mu: 4, za: 2, ng: 1, eg: 2
+  };
+
+  function hidePlaceResults() {
+    placeResultsEl.hidden = true;
+    placeResultsEl.innerHTML = '';
+  }
+
+  function renderPlaceResults(items) {
+    placeResultsEl.innerHTML = '';
+    if (!items.length) {
+      var li = document.createElement('li');
+      li.className = 'no-results';
+      li.textContent = 'No matches — try a nearby bigger town, or use the quick pick / coordinates below.';
+      placeResultsEl.appendChild(li);
+      placeResultsEl.hidden = false;
+      return;
+    }
+    items.forEach(function (item) {
+      var li = document.createElement('li');
+      li.textContent = item.display_name;
+      li.addEventListener('click', function () {
+        var lat = parseFloat(item.lat);
+        var lon = parseFloat(item.lon);
+        var cc = (item.address && item.address.country_code) || '';
+
+        if (cc === 'in') {
+          searchSelectedPlace = { lat: lat, lon: lon, tz: 5.5, label: item.display_name };
+          placeSearchInput.value = item.display_name;
+          placeSelectedHintEl.textContent = 'Selected: ' + item.display_name + ' (' + lat.toFixed(4) + ', ' + lon.toFixed(4) + ')';
+          placeSelectedHintEl.classList.add('is-selected');
+        } else {
+          // Non-India: hand off to the manual coordinate fields so the
+          // UTC offset can be confirmed rather than silently guessed.
+          searchSelectedPlace = null;
+          placeSelect.value = 'custom';
+          customCoords.hidden = false;
+          document.getElementById('lat').value = lat.toFixed(4);
+          document.getElementById('lon').value = lon.toFixed(4);
+          var guess = COUNTRY_TZ_GUESS[cc];
+          var tzField = document.getElementById('tz');
+          if (guess !== undefined) {
+            tzField.value = guess;
+            placeSelectedHintEl.textContent = 'Selected: ' + item.display_name + ' — UTC offset pre-filled as a best guess (' + guess + '). Please double-check it for the birth date (daylight saving can shift it).';
+          } else {
+            tzField.value = '';
+            placeSelectedHintEl.textContent = 'Selected: ' + item.display_name + ' — this country spans more than one timezone, so please enter the UTC offset for that place and date below.';
+            tzField.focus();
+          }
+          placeSearchInput.value = item.display_name;
+          placeSelectedHintEl.classList.add('is-selected');
+        }
+        hidePlaceResults();
+      });
+      placeResultsEl.appendChild(li);
+    });
+    placeResultsEl.hidden = false;
+  }
+
+  placeSearchInput.addEventListener('input', function () {
+    var query = placeSearchInput.value.trim();
+    searchSelectedPlace = null;
+    placeSelectedHintEl.classList.remove('is-selected');
+    placeSelectedHintEl.textContent = 'Type at least 3 letters. Works for any place worldwide — Indian results fill in the timezone automatically (IST for all of India); other countries ask you to confirm the UTC offset.';
+
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    if (query.length < 3) {
+      hidePlaceResults();
+      return;
+    }
+
+    searchDebounceTimer = setTimeout(function () {
+      var mySeq = ++searchRequestSeq;
+      placeResultsEl.innerHTML = '<li class="loading">Searching&hellip;</li>';
+      placeResultsEl.hidden = false;
+
+      var url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=7&q=' + encodeURIComponent(query);
+      fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(function (res) {
+          if (!res.ok) throw new Error('Search request failed');
+          return res.json();
+        })
+        .then(function (data) {
+          if (mySeq !== searchRequestSeq) return; // a newer keystroke superseded this request
+          renderPlaceResults(data || []);
+        })
+        .catch(function () {
+          if (mySeq !== searchRequestSeq) return;
+          placeResultsEl.innerHTML = '';
+          var li = document.createElement('li');
+          li.className = 'no-results';
+          li.textContent = 'Search unavailable right now — use the quick pick / coordinates below instead.';
+          placeResultsEl.appendChild(li);
+          placeResultsEl.hidden = false;
+        });
+    }, 400);
+  });
+
+  document.addEventListener('click', function (e) {
+    if (e.target !== placeSearchInput && !placeResultsEl.contains(e.target)) {
+      hidePlaceResults();
+    }
+  });
+
+  // ================= Astronomy core =================
+  function toRad(d) { return d * Math.PI / 180; }
+  function toDeg(r) { return r * 180 / Math.PI; }
+  function norm360(d) { d = d % 360; return d < 0 ? d + 360 : d; }
+
+  function julianDay(y, m, d, hourUTC) {
+    if (m <= 2) { y -= 1; m += 12; }
+    var A = Math.floor(y / 100);
+    var B = 2 - A + Math.floor(A / 4);
+    return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + hourUTC / 24 + B - 1524.5;
+  }
+
+  function sunLongitude(T) {
+    var L0 = norm360(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
+    var M = norm360(357.52911 + 35999.05029 * T - 0.0001537 * T * T);
+    var Mrad = toRad(M);
+    var C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Mrad)
+      + (0.019993 - 0.000101 * T) * Math.sin(2 * Mrad)
+      + 0.000289 * Math.sin(3 * Mrad);
+    var trueLong = L0 + C;
+    var omega = 125.04 - 1934.136 * T;
+    var apparentLong = trueLong - 0.00569 - 0.00478 * Math.sin(toRad(omega));
+    return norm360(apparentLong);
+  }
+
+  function moonLongitude(T) {
+    var Lp = norm360(218.3164477 + 481267.88123421 * T - 0.0015786 * T * T + Math.pow(T,3) / 538841 - Math.pow(T,4) / 65194000);
+    var D = norm360(297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + Math.pow(T,3) / 545868 - Math.pow(T,4) / 113065000);
+    var M = norm360(357.5291092 + 35999.0502909 * T - 0.0001536 * T * T + Math.pow(T,3) / 24490000);
+    var Mp = norm360(134.9633964 + 477198.8675055 * T + 0.0087414 * T * T + Math.pow(T,3) / 69699 - Math.pow(T,4) / 14712000);
+    var F = norm360(93.2720950 + 483202.0175233 * T - 0.0036539 * T * T - Math.pow(T,3) / 3526000 + Math.pow(T,4) / 863310000);
+    var Dr = toRad(D), Mr = toRad(M), Mpr = toRad(Mp), Fr = toRad(F);
+    var sumL = 0;
+    sumL += 6.288774 * Math.sin(Mpr);
+    sumL += 1.274027 * Math.sin(2 * Dr - Mpr);
+    sumL += 0.658314 * Math.sin(2 * Dr);
+    sumL += 0.213618 * Math.sin(2 * Mpr);
+    sumL += -0.185116 * Math.sin(Mr);
+    sumL += -0.114332 * Math.sin(2 * Fr);
+    sumL += 0.058793 * Math.sin(2 * Dr - 2 * Mpr);
+    sumL += 0.057066 * Math.sin(2 * Dr - Mr - Mpr);
+    sumL += 0.053322 * Math.sin(2 * Dr + Mpr);
+    sumL += 0.045758 * Math.sin(2 * Dr - Mr);
+    sumL += -0.040923 * Math.sin(Mr - Mpr);
+    sumL += -0.034720 * Math.sin(Dr);
+    sumL += -0.030383 * Math.sin(Mr + Mpr);
+    sumL += 0.015327 * Math.sin(2 * Dr - 2 * Fr);
+    sumL += -0.012528 * Math.sin(2 * Fr + Mpr);
+    sumL += 0.010980 * Math.sin(2 * Fr - Mpr);
+    sumL += 0.010675 * Math.sin(4 * Dr - Mpr);
+    sumL += 0.010034 * Math.sin(3 * Mpr);
+    sumL += 0.008548 * Math.sin(4 * Dr - 2 * Mpr);
+    sumL += -0.007888 * Math.sin(2 * Dr + Mr - Mpr);
+    sumL += -0.006766 * Math.sin(2 * Dr + Mr);
+    return norm360(Lp + sumL);
+  }
+
+  // Mean lunar node (Rahu), Meeus ch. 47. Ketu is always 180deg opposite.
+  function rahuLongitude(T) {
+    var omega = 125.04452 - 1934.136261 * T + 0.0020708 * T * T + Math.pow(T, 3) / 450000;
+    return norm360(omega);
+  }
+
+  function lahiriAyanamsa(jd) {
+    var T = (jd - 2451545.0) / 36525;
+    return 23.85212 + 1.396044 * T + 0.000305 * T * T;
+  }
+
+  function gmstDegrees(jd) {
+    var T = (jd - 2451545.0) / 36525;
+    var gmst = 280.46061837 + 360.98564736629 * (jd - 2451545.0)
+      + 0.000387933 * T * T - (T * T * T) / 38710000;
+    return norm360(gmst);
+  }
+
+  function meanObliquity(T) {
+    var seconds = 21.448 - T * (46.8150 + T * (0.00059 - T * 0.001813));
+    return 23 + (26 + seconds / 60) / 60;
+  }
+
+  function tropicalAscendant(jd, latDeg, lonDeg) {
+    var T = (jd - 2451545.0) / 36525;
+    var gmst = gmstDegrees(jd);
+    var lst = norm360(gmst + lonDeg);
+    var eps = toRad(meanObliquity(T));
+    var lstRad = toRad(lst);
+    var latRad = toRad(latDeg);
+    var y = -Math.cos(lstRad);
+    var x = Math.sin(eps) * Math.tan(latRad) + Math.cos(eps) * Math.sin(lstRad);
+    return norm360(toDeg(Math.atan2(y, x)));
+  }
+
+  var RASI_NAMES = ["Mesha (Aries)", "Vrishabha (Taurus)", "Mithuna (Gemini)", "Karka (Cancer)",
+    "Simha (Leo)", "Kanya (Virgo)", "Tula (Libra)", "Vrischika (Scorpio)",
+    "Dhanu (Sagittarius)", "Makara (Capricorn)", "Kumbha (Aquarius)", "Meena (Pisces)"];
+
+  var NAKSHATRA_NAMES = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
+    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
+    "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula",
+    "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha",
+    "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"];
+
+  // Commonly used Tamil and Telugu equivalents (verify before publishing -
+  // transliteration conventions vary by region/publisher). Hindi
+  // traditionally uses names very close to the Sanskrit column above, so it
+  // isn't given a separate array - the Sanskrit name already serves as the
+  // Hindi one.
+  var NAKSHATRA_NAMES_TA = ["Aswini", "Bharani", "Karthigai", "Rohini", "Mirugasirisham", "Thiruvathirai",
+    "Punarpoosam", "Poosam", "Ayilyam", "Magam", "Pooram", "Uthiram",
+    "Hastham", "Chithirai", "Swathi", "Visakam", "Anusham", "Kettai", "Moolam",
+    "Pooradam", "Uthiradam", "Thiruvonam", "Avittam", "Sadayam",
+    "Poorattathi", "Uthirattathi", "Revathi"];
+
+  var NAKSHATRA_NAMES_TE = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigasira", "Arudra",
+    "Punarvasu", "Pushyami", "Aslesha", "Makha", "Pubba", "Uttara",
+    "Hasta", "Chitta", "Swati", "Visakha", "Anuradha", "Jyeshta", "Moola",
+    "Poorvashada", "Uttarashada", "Sravanam", "Dhanishta", "Satabhisham",
+    "Poorvabhadra", "Uttarabhadra", "Revati"];
+
+  // Which regional language is currently shown alongside the Sanskrit name.
+  // 'ta' = Tamil, 'te' = Telugu. Remembered per visitor via localStorage.
+  var regionalLang = 'ta';
+  try {
+    var savedLang = localStorage.getItem('mep-reg-lang');
+    if (savedLang === 'ta' || savedLang === 'te') regionalLang = savedLang;
+  } catch (e) {}
+
+  function regionalName(nakIndex) {
+    return (regionalLang === 'te' ? NAKSHATRA_NAMES_TE : NAKSHATRA_NAMES_TA)[nakIndex];
+  }
+  function regionalLabel() {
+    return regionalLang === 'te' ? 'Telugu' : 'Tamil';
+  }
+
+  // Placeholder static guidance per nakshatra - replace with your own text.
+  var GUIDANCE = [
+    "Favourable for fresh starts, ceremonies and travel that call for energy and initiative.",
+    "Good for tasks needing patience and steady effort, such as saving, planting or long-term commitments.",
+    "Suited to sharp, decisive action - cutting through obstacles, starting focused work.",
+    "Favourable for creative, artistic or beauty-related beginnings, and for nurturing relationships.",
+    "Good for gentle, exploratory beginnings - research, seeking, short trips of discovery.",
+    "Best reserved for necessary but effortful tasks; avoid starting delicate new ventures.",
+    "Excellent for education, teaching and mending relationships; a nurturing, restorative time.",
+    "Favourable for nourishment-related beginnings - starting a diet, farming, providing for others.",
+    "Better for concluding matters than beginning them; proceed cautiously with new starts.",
+    "Good for ancestral matters, ceremonies and anything requiring authority or leadership.",
+    "Favourable for leisure, celebration and creative pursuits; less ideal for serious contracts.",
+    "Excellent for beginnings meant to last - contracts, partnerships, charitable acts.",
+    "Good for skilled, hands-on work - crafts, trade, anything requiring dexterity.",
+    "Favourable for design, craftsmanship and detailed, precise undertakings.",
+    "Good for starting journeys and independent ventures; favours movement and freedom.",
+    "Best for determined, goal-driven starts where some struggle is expected.",
+    "Favourable for building relationships, friendships and collaborative ventures.",
+    "Better for finishing than beginning; use caution when starting sharp or competitive ventures.",
+    "Good for research, introspection and letting go of what no longer serves.",
+    "Favourable for beginnings that require conviction and an unwavering decision.",
+    "Excellent for beginnings meant to succeed decisively - the most auspicious of the Ashadhas.",
+    "Good for study, listening and learning-oriented beginnings.",
+    "Favourable for wealth-related starts, and for musical or artistic beginnings.",
+    "Best for tasks done alone; favours healing and quiet, unconventional beginnings.",
+    "Proceed cautiously; better suited to closing matters than opening new ones.",
+    "Favourable for spiritual undertakings and transitions requiring depth.",
+    "Excellent for completions, journeys' ends, and gentle, nurturing new beginnings."
+  ];
+
+  function siderealToChart(siderealLon) {
+    var lon = norm360(siderealLon);
+    var rasiIndex = Math.floor(lon / 30);
+    var rasiDeg = lon - rasiIndex * 30;
+    var nakIndex = Math.floor(lon / (40 / 3));
+    var nakDeg = lon - nakIndex * (40 / 3);
+    var pada = Math.floor(nakDeg / (40 / 3 / 4)) + 1;
+    return {
+      longitude: lon, rasiIndex: rasiIndex, rasiName: RASI_NAMES[rasiIndex], rasiDeg: rasiDeg,
+      nakIndex: nakIndex, nakshatraName: NAKSHATRA_NAMES[nakIndex], nakDeg: nakDeg, pada: pada
+    };
+  }
+
+  function degToDMS(deg) {
+    var d = Math.floor(deg);
+    var mFull = (deg - d) * 60;
+    var m = Math.floor(mFull);
+    var s = Math.round((mFull - m) * 60);
+    return d + "°" + m + "′" + s + "″";
+  }
+
+  // ================= Sensitive point formulas =================
+  // Day birth: Sun is above the horizon, i.e. on the Descendant->Ascendant
+  // (upper, houses 7-12) side of the horizon axis. Ascendant and Descendant
+  // are exactly 180deg apart, so this test is exact, not approximate.
+  function isDayBirth(sunSidereal, ascSidereal) {
+    var diff = norm360(sunSidereal - ascSidereal);
+    return diff >= 180;
+  }
+
+  // Punya Saham (Tajika "Fortune Point"): day birth = Moon-Sun+Asc,
+  // night birth = Sun-Moon+Asc.
+  function punyaSaham(sunSidereal, moonSidereal, ascSidereal, dayBirth) {
+    if (dayBirth) return norm360(moonSidereal - sunSidereal + ascSidereal);
+    return norm360(sunSidereal - moonSidereal + ascSidereal);
+  }
+
+  // Yogi Point: Sun + Moon + 93deg20' (3 signs 3deg20').
+  function yogiPoint(sunSidereal, moonSidereal) {
+    return norm360(sunSidereal + moonSidereal + 93 + 20 / 60);
+  }
+
+  // Bhrigu Bindu: midpoint of Moon and Rahu along the shorter arc.
+  function bhriguBindu(moonSidereal, rahuSidereal) {
+    var diff = norm360(moonSidereal - rahuSidereal);
+    if (diff > 180) diff -= 360; // fold to (-180, 180] so we take the near side
+    return norm360(rahuSidereal + diff / 2);
+  }
+
+  // Placeholder benefit text per point - replace with your own copy.
+  var SAHAM_BENEFITS = [
+    "Read as a protective influence for the year ahead when well placed.",
+    "Favourable placement often coincides with ceremonies, celebrations and gains.",
+    "A weak or afflicted placement calls for more caution with money and commitments.",
+    "Traditionally combined with other Sahams (e.g. marriage, career) for annual timing.",
+    "Rooted in the classical Tajika (Varshaphal) tradition, not a modern invention."
+  ];
+
+  // ================= Form handling =================
+  var form = document.getElementById('mepForm');
+  var errorBox = document.getElementById('errorBox');
+  var resultsSection = document.getElementById('results');
+  var resultsHeading = document.getElementById('resultsHeading');
+  var guidanceText = document.getElementById('guidanceText');
+  var sahamPointEl = document.getElementById('sahamPoint');
+  var sahamNameLineEl = document.getElementById('sahamNameLine');
+  var sahamBenefitsEl = document.getElementById('sahamBenefits');
+  var techListEl = document.getElementById('techList');
+
+  // Each locked card has its own [data-unlock] button. Wire every one up
+  // the same way for now; swap the alert for your real payment call later
+  // (see Option 1 / Option 2 in the deploy README).
+  document.querySelectorAll('[data-unlock]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      alert('Payment flow not wired up yet — this button is a placeholder for the future ₹10 unlock.');
+    });
+  });
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.hidden = false;
+  }
+  function clearError() {
+    errorBox.hidden = true;
+    errorBox.textContent = '';
+  }
+
+  function renderMepRow(labelText, chart) {
+    var row = document.createElement('div');
+    row.className = 'mep-row';
+    row.innerHTML =
+      '<div class="mep-label">' + labelText + '</div>' +
+      '<div class="mep-main">' +
+        '<div class="name">' + chart.nakshatraName + ' <span class="ta-name">/ ' + regionalName(chart.nakIndex) + '</span></div>' +
+        '<div class="sub">' + chart.rasiName + ' &middot; ' + degToDMS(chart.rasiDeg) + ' into sign</div>' +
+      '</div>' +
+      '<div class="mep-deg">' + degToDMS(chart.longitude) + '<br><span class="pada-tag">Pada ' + chart.pada + '</span></div>';
+    return row;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    clearError();
+
+    var dobVal = document.getElementById('dob').value;
+    var tobVal = document.getElementById('tob').value;
+    if (!dobVal || !tobVal) {
+      showError('Please provide both date and time of birth.');
+      return;
+    }
+
+    var lat, lon, tzOffset, placeLabel;
+    if (searchSelectedPlace) {
+      lat = searchSelectedPlace.lat;
+      lon = searchSelectedPlace.lon;
+      tzOffset = searchSelectedPlace.tz;
+      placeLabel = searchSelectedPlace.label;
+    } else {
+      var placeVal = placeSelect.value;
+      if (placeVal === 'custom') {
+        lat = parseFloat(document.getElementById('lat').value);
+        lon = parseFloat(document.getElementById('lon').value);
+        tzOffset = parseFloat(document.getElementById('tz').value);
+        placeLabel = 'custom location';
+        if (isNaN(lat) || isNaN(lon) || isNaN(tzOffset)) {
+          showError('Please search for your place of birth above, or enter latitude, longitude and UTC offset for the custom location.');
+          return;
+        }
+      } else {
+        var parts = placeVal.split(',');
+        lat = parseFloat(parts[0]);
+        lon = parseFloat(parts[1]);
+        tzOffset = parseFloat(parts[2]);
+        placeLabel = parts[3];
+      }
+    }
+
+    var dobParts = dobVal.split('-').map(Number);
+    var tobParts = tobVal.split(':').map(Number);
+    var year = dobParts[0], month = dobParts[1], day = dobParts[2];
+    var hour = tobParts[0], minute = tobParts[1];
+
+    var localHourDecimal = hour + minute / 60;
+    var utcHourDecimal = localHourDecimal - tzOffset;
+
+    // Normalize day/hour if UTC conversion crosses a day boundary
+    var jd = julianDay(year, month, day, utcHourDecimal);
+
+    var T = (jd - 2451545.0) / 36525;
+    var sunTrop = sunLongitude(T);
+    var moonTrop = moonLongitude(T);
+    var ascTrop = tropicalAscendant(jd, lat, lon);
+    var ayanamsa = lahiriAyanamsa(jd);
+
+    var rahuTrop = rahuLongitude(T);
+
+    var sunSid = norm360(sunTrop - ayanamsa);
+    var moonSid = norm360(moonTrop - ayanamsa);
+    var ascSid = norm360(ascTrop - ayanamsa);
+    var rahuSid = norm360(rahuTrop - ayanamsa);
+
+    var lagnaChart = siderealToChart(ascSid);
+    var suryaChart = siderealToChart(sunSid);
+    var chandraChart = siderealToChart(moonSid);
+
+    var dayBirth = isDayBirth(sunSid, ascSid);
+    var sahamChart = siderealToChart(punyaSaham(sunSid, moonSid, ascSid, dayBirth));
+    var yogiChart = siderealToChart(yogiPoint(sunSid, moonSid));
+    var bbChart = siderealToChart(bhriguBindu(moonSid, rahuSid));
+
+    var name = document.getElementById('name').value.trim();
+
+    lastCharts = {
+      name: name, dayBirth: dayBirth,
+      lagnaChart: lagnaChart, suryaChart: suryaChart, chandraChart: chandraChart,
+      sahamChart: sahamChart, yogiChart: yogiChart, bbChart: bbChart
+    };
+    renderResultsUI(lastCharts);
+
+    resultsSection.classList.add('show');
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  // Holds the most recently computed chart so a regional-language switch can
+  // re-render the names without re-running the whole calculation.
+  var lastCharts = null;
+
+  function renderResultsUI(c) {
+    resultsHeading.textContent = (c.name ? c.name + '’s' : 'Your') + ' Sensitive Points';
+
+    // Free: Punya Saham
+    sahamPointEl.innerHTML = '';
+    sahamPointEl.appendChild(renderMepRow('Sensitive Point', c.sahamChart));
+    sahamPointEl.dataset.dayBirth = c.dayBirth ? 'day' : 'night';
+    sahamNameLineEl.textContent = 'Punya Saham';
+
+    guidanceText.textContent = GUIDANCE[c.sahamChart.nakIndex];
+
+    sahamBenefitsEl.innerHTML = '';
+    SAHAM_BENEFITS.forEach(function (b) {
+      var li = document.createElement('li');
+      li.textContent = b;
+      sahamBenefitsEl.appendChild(li);
+    });
+
+    // Locked: Yogi Point and Bhrigu Bindu (still computed, just visually hidden
+    // behind their own card's blur/lock overlay until unlocked).
+    var yogiStack = document.querySelector('.locked-group[data-point="yogi"] .locked-stack');
+    yogiStack.innerHTML = '';
+    yogiStack.appendChild(renderMepRow('Yogi Point', c.yogiChart));
+
+    var bbStack = document.querySelector('.locked-group[data-point="bb"] .locked-stack');
+    bbStack.innerHTML = '';
+    bbStack.appendChild(renderMepRow('Bhrigu Bindu', c.bbChart));
+
+    // Technical detail footnote
+    techListEl.innerHTML = '';
+    [['Lagna', c.lagnaChart], ['Surya (Sun)', c.suryaChart], ['Chandra (Moon)', c.chandraChart]].forEach(function (pair) {
+      var row = document.createElement('div');
+      row.className = 'tech-row';
+      row.innerHTML = '<span>' + pair[0] + '</span><span>' + degToDMS(pair[1].longitude) + ' — ' + pair[1].nakshatraName + ' / ' + regionalName(pair[1].nakIndex) + ' pada ' + pair[1].pada + '</span>';
+      techListEl.appendChild(row);
+    });
+    var birthRow = document.createElement('div');
+    birthRow.className = 'tech-row';
+    birthRow.innerHTML = '<span>Birth type</span><span>' + (c.dayBirth ? 'Day birth' : 'Night birth') + '</span>';
+    techListEl.appendChild(birthRow);
+  }
+
+  // ---------- regional-language toggle (Tamil / Telugu) ----------
+  var langButtons = document.querySelectorAll('[data-reg-lang]');
+  function applyRegionalLangButtons() {
+    langButtons.forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-reg-lang') === regionalLang);
+    });
+  }
+  applyRegionalLangButtons();
+  langButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      regionalLang = btn.getAttribute('data-reg-lang');
+      try { localStorage.setItem('mep-reg-lang', regionalLang); } catch (e) {}
+      applyRegionalLangButtons();
+      if (lastCharts) renderResultsUI(lastCharts);
+    });
+  });
+})();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>
