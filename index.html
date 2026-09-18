@@ -1362,6 +1362,13 @@
   var MOON_EXTENDED_ORB = 5;             // 3-pada window for Moon only (see notes)
   var TRANSIT_PLANETS = ['moon', 'sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu'];
   var PLANET_DISPLAY = { moon: 'Moon', sun: 'Sun', mercury: 'Mercury', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn', rahu: 'Rahu', ketu: 'Ketu' };
+  // One accent color per planet for its calendar highlights - chosen to read
+  // clearly against the report's dark navy card background.
+  var PLANET_COLOR = {
+    moon: [123, 168, 217], sun: [224, 148, 74], mercury: [111, 174, 122],
+    venus: [216, 139, 176], mars: [201, 100, 90], jupiter: [222, 189, 90],
+    saturn: [154, 163, 214], rahu: [180, 140, 100], ketu: [166, 140, 214]
+  };
   var PLANET_PARAGRAPHS = {
     moon: "As the Moon moves through your Fortune Point, it touches the gentler, more emotional side of your life. This is a good window for you to pick up silver, kitchenware, or something comforting for your home — small purchases made now tend to feel worthwhile later. It's also a favourable time to make space for your mother or the maternal figures in your life, even if it's just an unhurried conversation. If you've been meaning to start something calming — meditation, swimming, even a cooking class — this transit quietly supports it.",
     sun: "When the Sun crosses your Fortune Point, once a year, it brings a short but meaningful window of visibility for you. This is a good time to put yourself forward — an application, an approval, a moment to step into leadership rather than wait to be asked. Gold, or something in warm red and copper tones, made or bought now carries a little extra significance. It's also a fitting time to reach out to your father or the senior figures in your family, and to take your own vitality seriously — a walk in the sun, a health check you've been postponing.",
@@ -1626,52 +1633,107 @@
 
       // ---- How to read ----
       heading('How to read this report', 13);
-      para('Each planet below gets one self-contained section: first a year-long timeline showing roughly when its activations fall, then a table with the exact date, duration and time window of each one, then what that planet\'s activation traditionally favours - broken into Relationships, Career, Money and Wellness - so everything about a planet is together in one place.');
-      para('A "transit window" is a span of time during which a planet is close enough to your Fortune Point\'s exact degree (within half a nakshatra pada, 1 deg 40 min, either side) for its influence to be considered active. The Moon crosses this window roughly once a month, but because each crossing lasts only about 6-7 hours, it can sometimes fall entirely at night - so for the Moon only, the table also shows a wider "extended" window (about 18-19 hours) giving you a practical chance of catching daylight hours.');
-      para('If a planet does not activate your Fortune Point at all in the coming year - this happens for the slower-moving ones, Jupiter and Saturn especially, depending on where they currently sit - that is called out explicitly rather than left blank.');
+      para('Each planet below gets one self-contained section: first a month-by-month calendar for the full report year with every activation day highlighted in that planet\'s color, then a table with the exact date, duration and time window of each one, then what that planet\'s activation traditionally favours - broken into Relationships, Career, Money and Wellness - so everything about a planet is together in one place.');
+      para('A "transit window" is a span of time during which a planet is close enough to your Fortune Point\'s exact degree (within half a nakshatra pada, 1 deg 40 min, either side) for its influence to be considered active. On the calendar, every day inside that window is shaded, with the single closest, most exact "peak" day marked solid. The Moon crosses this window roughly once a month, but because each crossing lasts only about 6-7 hours, it can sometimes fall entirely at night - so for the Moon only, the table also shows a wider "extended" window (about 18-19 hours) giving you a practical chance of catching daylight hours.');
+      para('If a planet does not activate your Fortune Point at all in the coming year - this happens for the slower-moving ones, Jupiter and Saturn especially, depending on where they currently sit - that is called out explicitly and no calendar is drawn for it.');
 
-      var MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      var WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-      // ---- Year-long timeline strip: a single bar spanning the report's 12
-      // months, month ticks along the bottom, and a small gold block for every
-      // transit window so the reader can see at a glance roughly when in the
-      // year this planet's activations cluster. ----
-      function yearTimelineChart(windows) {
-        var trackH = 10;
-        ensureSpace(trackH + 26);
-        var trackX = margin, trackW = contentW;
-        var trackY = y + 2;
+      function daysInMonthCalc(yy, mm) { return new Date(yy, mm, 0).getDate(); }
+      function firstWeekdayCalc(yy, mm) { return new Date(yy, mm - 1, 1).getDay(); }
+      function dayIdx(yy, mm, dd) { return Date.UTC(yy, mm - 1, dd); }
+      function lighten(c, amt) { return [c[0], c[1], c[2]].map(function (v) { return Math.round(v + (255 - v) * amt); }); }
 
-        doc.setFillColor(236, 229, 208);
-        doc.roundedRect(trackX, trackY, trackW, trackH, trackH / 2, trackH / 2, 'F');
-
-        var startYMD = istYMD(jdStart);
-        var cy = startYMD.y, cm = startYMD.m;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(140, 132, 115);
-        for (var i = 0; i < 14; i++) {
-          var tickJd = jdForISTMidnight(cy, cm, 1);
-          if (tickJd > jdEnd) break;
-          var frac = (tickJd - jdStart) / (jdEnd - jdStart);
-          if (frac >= 0 && frac <= 1) {
-            var tx = trackX + frac * trackW;
-            doc.setDrawColor(205, 195, 170); doc.setLineWidth(0.5);
-            doc.line(tx, trackY - 3, tx, trackY + trackH + 3);
-            doc.text(MONTH_ABBR[cm - 1] + "'" + String(cy).slice(2), tx, trackY + trackH + 11, { align: 'center' });
-          }
-          cm++; if (cm > 12) { cm = 1; cy++; }
+      // Every month the report spans (Sep'26 - Sep'27 style, ~13 months),
+      // computed once and reused for every planet's calendar.
+      var REPORT_MONTHS = (function () {
+        var s = istYMD(jdStart), e = istYMD(jdEnd);
+        var list = [], cy2 = s.y, cm2 = s.m;
+        while (cy2 < e.y || (cy2 === e.y && cm2 <= e.m)) {
+          list.push({ y: cy2, m: cm2 });
+          cm2++; if (cm2 > 12) { cm2 = 1; cy2++; }
         }
+        return list;
+      })();
 
+      // For one calendar month, which days fall inside any of this planet's
+      // transit windows ("inRange"), and which single day is the exact peak.
+      function computeMonthMarks(windows, yy, mm) {
+        var n = daysInMonthCalc(yy, mm);
+        var marks = {};
         windows.forEach(function (w) {
-          var f1 = Math.max(0, Math.min(1, (w.start - jdStart) / (jdEnd - jdStart)));
-          var f2 = Math.max(0, Math.min(1, (w.end - jdStart) / (jdEnd - jdStart)));
-          var x1 = trackX + f1 * trackW, x2 = trackX + f2 * trackW;
-          var bw = Math.max(x2 - x1, 3.5);
-          var cx = (x1 + x2) / 2;
-          doc.setFillColor(178, 118, 18);
-          doc.roundedRect(cx - bw / 2, trackY, bw, trackH, 2, 2, 'F');
+          var s = istYMD(w.start), e = istYMD(w.end), p = istYMD(w.peak);
+          var sIdx = dayIdx(s.y, s.m, s.d), eIdx = dayIdx(e.y, e.m, e.d), pIdx = dayIdx(p.y, p.m, p.d);
+          for (var d = 1; d <= n; d++) {
+            var dIdx = dayIdx(yy, mm, d);
+            if (dIdx >= sIdx && dIdx <= eIdx) {
+              if (!marks[d]) marks[d] = { inRange: false, peak: false };
+              marks[d].inRange = true;
+              if (dIdx === pIdx) marks[d].peak = true;
+            }
+          }
         });
+        return marks;
+      }
 
-        y = trackY + trackH + 11 + 12;
+      function drawMonthBox(bx, by, bw, bh, yy, mm, marks, color) {
+        doc.setFillColor(246, 240, 222);
+        doc.roundedRect(bx, by, bw, bh, 4, 4, 'F');
+        doc.setDrawColor(210, 200, 180); doc.setLineWidth(0.6);
+        doc.roundedRect(bx, by, bw, bh, 4, 4);
+
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(150, 105, 30);
+        doc.text(MONTH_NAMES[mm - 1].slice(0, 3) + ' ' + yy, bx + bw / 2, by + 12, { align: 'center' });
+
+        var cellW = bw / 7, padTop = 20;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(6.2); doc.setTextColor(150, 140, 115);
+        WEEKDAY_LETTERS.forEach(function (l, i) { doc.text(l, bx + i * cellW + cellW / 2, by + padTop, { align: 'center' }); });
+
+        var gridTop = by + padTop + 8, rowH = 10.5;
+        var firstWd = firstWeekdayCalc(yy, mm), nDays = daysInMonthCalc(yy, mm);
+        var day = 1;
+        for (var row = 0; row < 6 && day <= nDays; row++) {
+          for (var col = 0; col < 7; col++) {
+            if (row === 0 && col < firstWd) continue;
+            if (day > nDays) break;
+            var cx = bx + col * cellW + cellW / 2, cy2 = gridTop + row * rowH + rowH / 2;
+            var mk = marks[day];
+            if (mk && mk.inRange) {
+              var fillC = mk.peak ? color : lighten(color, 0.55);
+              doc.setFillColor(fillC[0], fillC[1], fillC[2]);
+              doc.circle(cx, cy2, rowH / 2 - 1, 'F');
+              doc.setTextColor(40, 32, 20);
+              doc.setFont('helvetica', mk.peak ? 'bold' : 'normal');
+            } else {
+              doc.setTextColor(90, 85, 72);
+              doc.setFont('helvetica', 'normal');
+            }
+            doc.setFontSize(7);
+            doc.text(String(day), cx, cy2 + 2.4, { align: 'center' });
+            day++;
+          }
+        }
+      }
+
+      // ---- Full-year calendar for this planet: every month the report
+      // spans, 3 to a row, with every day of every transit window shaded in
+      // the planet's color and the exact peak day marked solid. ----
+      function monthlyCalendarGrid(windows, color) {
+        var cols = 3, gap = 10;
+        var boxW = (contentW - gap * (cols - 1)) / cols;
+        var boxH = 96;
+        for (var i = 0; i < REPORT_MONTHS.length; i += cols) {
+          ensureSpace(boxH + 10);
+          var rowMonths = REPORT_MONTHS.slice(i, i + cols);
+          rowMonths.forEach(function (mo, idx) {
+            var bx = margin + idx * (boxW + gap);
+            var marks = computeMonthMarks(windows, mo.y, mo.m);
+            drawMonthBox(bx, y, boxW, boxH, mo.y, mo.m, marks, color);
+          });
+          y += boxH + 10;
+        }
+        y += 4;
       }
 
       // ---- Table of every transit for this planet: Date / Duration / Peak
@@ -1742,7 +1804,7 @@
           doc.text(pdfSafe('No ' + PLANET_DISPLAY[name] + ' transit activates your Fortune Point within the next year.'), margin + 10, y + 17);
           y += 26 + 10;
         } else {
-          yearTimelineChart(windows);
+          monthlyCalendarGrid(windows, PLANET_COLOR[name]);
           transitTable(windows, name === 'moon' ? transits.moonExtended : null);
           whatToDoBlock(name);
         }
