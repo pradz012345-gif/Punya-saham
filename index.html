@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Punya Saham — Sensitive Points in Astrology</title>
-<meta name="description" content="Vedic sensitive-point calculator: Punya Saham, Yogi Point and Bhrigu Bindu from birth date, time and place.">
+<title>Punya Saham — Fortune Points in Astrology</title>
+<meta name="description" content="Vedic fortune-point calculator: Punya Saham, Yogi Point and Bhrigu Bindu from birth date, time and place.">
 <meta name="theme-color" content="#12142b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -410,6 +410,12 @@
 
   .locked-group { position: relative; }
   .locked-stack { display: flex; flex-direction: column; gap: 12px; filter: blur(5px); user-select: none; pointer-events: none; opacity: 0.75; }
+  /* TESTING UNLOCK SWITCH: while this block is present, all locked-group cards
+     (Yogi Point, Bhrigu Bindu) show their real content instead of the blur/paywall
+     overlay, so the owner can verify calculations before real users see the app.
+     To re-enable the paywall later, just delete this rule block. */
+  .locked-stack { filter: none; user-select: auto; pointer-events: auto; opacity: 1; }
+  .lock-overlay { display: none !important; }
   .lock-overlay {
     position: absolute;
     inset: 0;
@@ -461,8 +467,8 @@
 
 <main>
   <p class="eyebrow">Vedic &middot; Jyotisha</p>
-  <h1>Punya Saham <span class="brand-sub">(Sensitive Points in Astrology)</span></h1>
-  <p class="subtitle">Enter a birth date, time and place. This locates the chart's key sensitive points &mdash; degrees that classical and modern Jyotisha treat as especially significant &mdash; and marks which rasi, nakshatra and pada each falls in.</p>
+  <h1>Punya Saham <span class="brand-sub">(Fortune Points in Astrology)</span></h1>
+  <p class="subtitle">Enter a birth date, time and place. This locates the chart's key fortune points &mdash; degrees that classical and modern Jyotisha treat as especially significant &mdash; and marks which rasi, nakshatra and pada each falls in.</p>
 
   <div class="account-bar">
     <button type="button" class="account-btn" id="signInBtn">
@@ -551,7 +557,7 @@
       </div>
     </div>
 
-    <button class="btn" type="submit">Find my sensitive points</button>
+    <button class="btn" type="submit">Find my fortune points</button>
   </form>
 
   <section id="results">
@@ -559,19 +565,19 @@
 
     <!-- Free: Punya Saham -->
     <div class="card point-card">
-      <div class="point-header"><h2>Punya Saham &mdash; your Sensitive Point</h2></div>
+      <div class="point-header"><h2>Punya Saham &mdash; your Fortune Point</h2></div>
       <p class="point-kicker">The classical Tajika "point of merit" (Punya Saham). A strong placement is read as a protective, fortune-bringing influence through the year; a weak one calls for more caution.</p>
       <div class="single-point" id="sahamPoint"></div>
       <p class="hint" id="sahamNameLine" style="margin:-6px 0 14px;"></p>
       <p class="fortune-lede">Your <strong>Punya Saham (Fortune Point)</strong> falls in <span class="fortune-highlight" id="sahamFortuneValue"></span>.</p>
-      <p class="fortune-body">In Vedic astrology, this point marks where your accumulated merit (punya) is believed to take shape in this life &mdash; the people, opportunities and circumstances through which good fortune tends to reach you. Its sign and nakshatra colour how that fortune expresses itself. As with all sensitive points, its results are not constant &mdash; they come alive when activated by favourable transits or planetary periods (dashas).</p>
+      <p class="fortune-body">In Vedic astrology, this point marks where your accumulated merit (punya) is believed to take shape in this life &mdash; the people, opportunities and circumstances through which good fortune tends to reach you. Its sign and nakshatra colour how that fortune expresses itself. As with all fortune points, its results are not constant &mdash; they come alive when activated by favourable transits or planetary periods (dashas).</p>
       <div class="guidance">
-        <p class="tag">Favourable to initiate &mdash; Sensitive Point nakshatra</p>
+        <p class="tag">Favourable to initiate &mdash; Fortune Point nakshatra</p>
         <p id="guidanceText"></p>
         <p class="placeholder-note">Placeholder guidance &mdash; replace with your own written text per nakshatra.</p>
       </div>
       <ul class="benefits-list" id="sahamBenefits"></ul>
-      <p class="placeholder-note" style="margin-top:12px;">Coming soon (paid): a one-year report of exact dates each planet transits your Sensitive Point, with what that transit favours.</p>
+      <p class="placeholder-note" style="margin-top:12px;">Coming soon (paid): a one-year report of exact dates each planet transits your Fortune Point, with what that transit favours.</p>
     </div>
 
     <!-- Locked: Yogi Point -->
@@ -1176,11 +1182,11 @@
   var lastCharts = null;
 
   function renderResultsUI(c) {
-    resultsHeading.textContent = (c.name ? c.name + '’s' : 'Your') + ' Sensitive Points';
+    resultsHeading.textContent = (c.name ? c.name + '’s' : 'Your') + ' Fortune Points';
 
     // Free: Punya Saham
     sahamPointEl.innerHTML = '';
-    sahamPointEl.appendChild(renderMepRow('Sensitive Point', c.sahamChart));
+    sahamPointEl.appendChild(renderMepRow('Fortune Point', c.sahamChart));
     sahamPointEl.dataset.dayBirth = c.dayBirth ? 'day' : 'night';
     sahamNameLineEl.textContent = 'Punya Saham';
     sahamFortuneValueEl.textContent = c.sahamChart.rasiName + ' — ' + c.sahamChart.nakshatraName + ' Nakshatra, Pada ' + c.sahamChart.pada;
