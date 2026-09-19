@@ -1362,12 +1362,39 @@
   var MOON_EXTENDED_ORB = 5;             // 3-pada window for Moon only (see notes)
   var TRANSIT_PLANETS = ['moon', 'sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu'];
   var PLANET_DISPLAY = { moon: 'Moon', sun: 'Sun', mercury: 'Mercury', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn', rahu: 'Rahu', ketu: 'Ketu' };
-  // One accent color per planet for its calendar highlights - chosen to read
-  // clearly against the report's dark navy card background.
+
+  // ---- "Ivory & Antique Gold" report palette (locked design) ----
+  var REPORT_PALETTE = {
+    pageBg: [250, 243, 230],   // #FAF3E6 ivory - full-page background
+    cardBg: [255, 253, 246],   // #FFFDF6 - month-cards, table zebra rows
+    gold: [184, 134, 11],      // #B8860B antique gold - borders, rules, dividers
+    goldSoft: [222, 208, 176], // gold blended toward pageBg, ~22% alpha equivalent, for subtle borders
+    headingInk: [122, 74, 30], // #7A4A1E - headings, planet names
+    bodyInk: [58, 43, 26],     // #3A2B1A - body text
+    mutedInk: [107, 92, 70],   // #6b5c46 - small caps / muted labels
+    mutedInk2: [156, 130, 83], // #9c8253 - lighter muted labels
+    moonGlow: [212, 168, 74]   // #D4A84A - antique-gold tint used for the Moon's soft halo
+  };
+
+  // Locked planet colors: {light, dark} radial-gradient-style pairs from the
+  // mockup. Flat jsPDF fills (legend swatches, day circles, timeline bars,
+  // table color-key dots) use the DARK value as the solid planet color; the
+  // LIGHT value is used for soft tints (e.g. band/track backgrounds).
+  var PLANET_COLOR_LIGHT = {
+    moon: [227, 223, 211],    // Moonstone Grey
+    sun: [240, 135, 62],      // Saffron Orange
+    mars: [216, 73, 46],      // Vermilion
+    mercury: [111, 174, 122], // Green (unchanged)
+    jupiter: [240, 201, 62],  // Turmeric Yellow
+    venus: [240, 220, 230],   // Lavender-Blush Silk
+    saturn: [61, 83, 160],    // Deep Navy Blue
+    rahu: [140, 99, 56],      // Deep Umber
+    ketu: [166, 150, 132]     // Smoky Taupe
+  };
   var PLANET_COLOR = {
-    moon: [123, 168, 217], sun: [224, 148, 74], mercury: [111, 174, 122],
-    venus: [216, 139, 176], mars: [201, 100, 90], jupiter: [222, 189, 90],
-    saturn: [154, 163, 214], rahu: [180, 140, 100], ketu: [166, 140, 214]
+    moon: [139, 133, 119], sun: [201, 97, 28], mars: [158, 46, 26],
+    mercury: [67, 115, 80], jupiter: [199, 154, 29], venus: [212, 184, 206],
+    saturn: [27, 40, 80], rahu: [94, 64, 32], ketu: [120, 106, 88]
   };
   var PLANET_PARAGRAPHS = {
     moon: "As the Moon moves through your Fortune Point, it touches the gentler, more emotional side of your life. This is a good window for you to pick up silver, kitchenware, or something comforting for your home — small purchases made now tend to feel worthwhile later. It's also a favourable time to make space for your mother or the maternal figures in your life, even if it's just an unhurried conversation. If you've been meaning to start something calming — meditation, swimming, even a cooking class — this transit quietly supports it.",
@@ -1438,6 +1465,21 @@
       money: "Not the ideal window for a major purchase — simplicity suits you more than acquisition right now.",
       wellness: "Meditation, a retreat, or simply decluttering your space will likely feel more rewarding than usual."
     }
+  };
+
+  // One-line condensed version of PLANET_CATEGORIES, for the final summary
+  // page's quick-reference list (not meant to replace the full per-planet
+  // "What to do" breakdown, just to remind at a glance).
+  var PLANET_HEADLINE = {
+    moon: "Comforting home purchases, time with your mother, and calming activities like meditation or swimming suit this window.",
+    sun: "A good window to put yourself forward, reconnect with your father, and take your own vitality seriously.",
+    mercury: "Favours signing contracts, clearing the air with a sibling or friend, and any writing or learning you've been putting off.",
+    venus: "Marriage-related events, mending relationships, and treating yourself to something beautiful are all well supported.",
+    mars: "Bold but careful action on property, vehicles or competitive work - approach siblings assertively but gently.",
+    jupiter: "A broader, slower window favouring education, mentorship, long-term finances and family good news.",
+    saturn: "Favours patience over speed - a long-term investment, disciplined work, and responsibilities toward elders.",
+    rahu: "Expect the unexpected - unconventional career moves and reconnecting with someone at a distance, with a little discernment.",
+    ketu: "A window for letting go rather than acquiring - quiet focused work, decluttering, and time alone."
   };
 
   function jdNowUTC() {
@@ -1576,6 +1618,10 @@
       return d + "deg " + m + "' " + s + '"';
     }
 
+    // TODO: Playfair Display / Source Sans 3 not embedded (no network/font access in build env) - using Times/Helvetica as serif/sans proxies until real font files are supplied.
+    var HEADING_FONT = 'times';   // serif proxy for Playfair Display
+    var BODY_FONT = 'helvetica';  // sans proxy for Source Sans 3
+
     function renderPDF() {
       var jspdf = window.jspdf;
       var doc = new jspdf.jsPDF({ unit: 'pt', format: 'a4' });
@@ -1585,22 +1631,33 @@
       var contentW = pageW - margin * 2;
       var y = margin;
       var lineH = 14;
-      var gold = [180, 140, 60];
+      var gold = REPORT_PALETTE.gold;
+      var pal = REPORT_PALETTE;
+
+      // Paints the ivory page background behind everything else on the
+      // current page. Called once for page 1, and again every time we add a
+      // new page, so every page of the PDF carries the "Ivory & Antique
+      // Gold" background rather than plain white.
+      function paintPageBackground() {
+        doc.setFillColor(pal.pageBg[0], pal.pageBg[1], pal.pageBg[2]);
+        doc.rect(0, 0, pageW, pageH, 'F');
+      }
+      paintPageBackground();
 
       function ensureSpace(h) {
-        if (y + h > pageH - margin) { doc.addPage(); y = margin; }
+        if (y + h > pageH - margin) { doc.addPage(); paintPageBackground(); y = margin; }
       }
       function heading(text, size) {
         ensureSpace(size + 8);
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(size); doc.setTextColor(30, 20, 10);
+        doc.setFont(HEADING_FONT, 'bold'); doc.setFontSize(size); doc.setTextColor(pal.headingInk[0], pal.headingInk[1], pal.headingInk[2]);
         doc.text(pdfSafe(text), margin, y); y += size + 6;
       }
       function para(text, opts) {
         opts = opts || {};
         var size = opts.size || 10;
-        doc.setFont('helvetica', opts.italic ? 'italic' : 'normal');
+        doc.setFont(BODY_FONT, opts.italic ? 'italic' : 'normal');
         doc.setFontSize(size);
-        var col = opts.color || [55, 50, 45];
+        var col = opts.color || pal.bodyInk;
         doc.setTextColor(col[0], col[1], col[2]);
         var lines = doc.splitTextToSize(pdfSafe(text), contentW);
         lines.forEach(function (line) {
@@ -1611,21 +1668,23 @@
       }
 
       // ---- Cover ----
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(30, 20, 10);
+      doc.setFont(HEADING_FONT, 'bold'); doc.setFontSize(22); doc.setTextColor(pal.headingInk[0], pal.headingInk[1], pal.headingInk[2]);
       doc.text('Punya Saham', margin, y); y += 26;
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(12.5); doc.setTextColor(120, 95, 40);
+      doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(12.5); doc.setTextColor(gold[0], gold[1], gold[2]);
       doc.text('Fortune Point Transit Report - 1 Year Outlook', margin, y); y += 26;
 
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(70, 70, 70);
+      doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(10); doc.setTextColor(pal.mutedInk[0], pal.mutedInk[1], pal.mutedInk[2]);
       doc.text('Name: ' + (c.name || '-'), margin, y); y += lineH;
       doc.text('Report period: ' + fmtISTDate(jdStart) + '  to  ' + fmtISTDate(jdEnd), margin, y); y += lineH + 10;
 
       var boxH = 54;
+      doc.setFillColor(pal.cardBg[0], pal.cardBg[1], pal.cardBg[2]);
+      doc.roundedRect(margin, y, contentW, boxH, 4, 4, 'F');
       doc.setDrawColor(gold[0], gold[1], gold[2]); doc.setLineWidth(1);
       doc.roundedRect(margin, y, contentW, boxH, 4, 4);
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5); doc.setTextColor(30, 20, 10);
+      doc.setFont(HEADING_FONT, 'bold'); doc.setFontSize(11.5); doc.setTextColor(pal.headingInk[0], pal.headingInk[1], pal.headingInk[2]);
       doc.text(pdfSafe('Your Fortune Point: ' + c.sahamChart.rasiName + ' - ' + c.sahamChart.nakshatraName + ' Nakshatra, Pada ' + c.sahamChart.pada), margin + 12, y + 22);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(100, 100, 100);
+      doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(9.5); doc.setTextColor(pal.mutedInk[0], pal.mutedInk[1], pal.mutedInk[2]);
       doc.text('Exact degree: ' + degDMSPdf(target), margin + 12, y + 40);
       y += boxH + 18;
 
@@ -1633,9 +1692,9 @@
 
       // ---- How to read ----
       heading('How to read this report', 13);
-      para('This report has three parts. First, one calendar for the whole year with every planet\'s activations of your Fortune Point overlaid on it in color, so you can see at a glance which days matter. Second, every one of those activations listed together in a single table, in pure chronological order. Third, what each planet\'s activation traditionally favours, broken into Relationships, Career, Money and Wellness.');
-      para('A "transit window" is a span of time during which a planet is close enough to your Fortune Point\'s exact degree (within half a nakshatra pada, 1 deg 40 min, either side) for its influence to be considered active. On the calendar, a run of consecutive days under the same planet is shown as one merged band of color, with the single closest, most exact "peak" day picked out and labelled. The Moon crosses this window roughly once a month, but because each crossing lasts only about 6-7 hours, it can sometimes fall entirely at night - so for the Moon only, the table also shows a wider "extended" window (about 18-19 hours) giving you a practical chance of catching daylight hours.');
-      para('If a planet does not activate your Fortune Point at all in the coming year - this happens for the slower-moving ones, Jupiter and Saturn especially, depending on where they currently sit - that is called out explicitly in the "What To Do" section rather than left blank.');
+      para('This report has two parts. First, every planet that activates your Fortune Point this year gets its own section: a table of each exact transit window, followed by what that activation traditionally favours, broken into Relationships, Career, Money and Wellness. Second, a final "Year at a Glance" summary brings it all together - one calendar with every planet\'s activations overlaid, the same activations in a single chronological table, and a quick-reference reminder of what each planet favours, all in a page or two, handy as a one-view summary or a preview of the report itself.');
+      para('A "transit window" is a span of time during which a planet is close enough to your Fortune Point\'s exact degree (within half a nakshatra pada, 1 deg 40 min, either side) for its influence to be considered active. On the summary calendar, a run of consecutive days under the same planet is shown as one merged band of color, with the single closest, most exact "peak" day picked out and labelled. The Moon crosses this window roughly once a month, but because each crossing lasts only about 6-7 hours, it can sometimes fall entirely at night - so for the Moon only, its table also shows a wider "extended" window (about 18-19 hours) giving you a practical chance of catching daylight hours.');
+      para('If a planet does not activate your Fortune Point at all in the coming year - this happens for the slower-moving ones, Jupiter and Saturn especially, depending on where they currently sit - that is called out explicitly in its own section below, rather than left blank.');
 
       var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
       var WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -1679,17 +1738,38 @@
 
       var PLANET_ABBR = { moon: 'Mo', sun: 'Su', mercury: 'Me', venus: 'Ve', mars: 'Ma', jupiter: 'Ju', saturn: 'Sa', rahu: 'Ra', ketu: 'Ke' };
 
+      // Moon's "Soft Gold Halo": 1-2 larger, lower-opacity antique-gold rings
+      // drawn behind a Moon dot, before the dot itself, to simulate a subtle
+      // glow. Used at every site that draws a Moon-colored circle (calendar
+      // day circles, legend swatch, table color-key dots). jsPDF 2.5.1 has no
+      // reliable per-shape alpha on older builds in some environments, so
+      // rather than depend on doc.setGState we precompute the "low opacity"
+      // rings as solid colors blended toward the ivory page background.
+      function moonHaloTint(amt) { return lighten(REPORT_PALETTE.moonGlow, amt); }
+      function drawMoonHalo(cx, cy, r) {
+        doc.setFillColor.apply(doc, moonHaloTint(0.45));
+        doc.circle(cx, cy, r * 2.1, 'F');
+        doc.setFillColor.apply(doc, moonHaloTint(0.72));
+        doc.circle(cx, cy, r * 1.5, 'F');
+      }
+      // Draws a planet's solid color dot at (cx, cy) with radius r, adding
+      // the Moon halo first when this is the Moon.
+      function drawPlanetDot(name, cx, cy, r) {
+        if (name === 'moon') drawMoonHalo(cx, cy, r);
+        var color = PLANET_COLOR[name];
+        doc.setFillColor(color[0], color[1], color[2]);
+        doc.circle(cx, cy, r, 'F');
+      }
+
       // ---- Legend: one colored dot per planet, so the calendar is readable
       // without cross-checking anything else. ----
       function drawLegend() {
         ensureSpace(16);
         var lx = margin, ly = y + 4;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+        doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(7.5);
         TRANSIT_PLANETS.forEach(function (name) {
-          var c = PLANET_COLOR[name];
-          doc.setFillColor(c[0], c[1], c[2]);
-          doc.circle(lx + 3, ly - 2.2, 3, 'F');
-          doc.setTextColor(60, 55, 45);
+          drawPlanetDot(name, lx + 3, ly - 2.2, 3);
+          doc.setTextColor(REPORT_PALETTE.mutedInk[0], REPORT_PALETTE.mutedInk[1], REPORT_PALETTE.mutedInk[2]);
           doc.text(PLANET_DISPLAY[name], lx + 9, ly);
           lx += 9 + doc.getTextWidth(PLANET_DISPLAY[name]) + 14;
         });
@@ -1697,67 +1777,72 @@
       }
 
       function drawPlainDay(bx, rowY, cellW, rowH, col, day) {
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(6.6); doc.setTextColor(90, 85, 72);
+        doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(6.6); doc.setTextColor(REPORT_PALETTE.mutedInk2[0], REPORT_PALETTE.mutedInk2[1], REPORT_PALETTE.mutedInk2[2]);
         doc.text(String(day), bx + col * cellW + cellW / 2, rowY + rowH / 2 + 2, { align: 'center' });
       }
 
-      // One or more consecutive same-day-of-week days, all activated by the
-      // SAME single planet, drawn as one merged band rather than separate
-      // circles - with the exact peak day picked out as a solid, labelled dot.
-      function drawBand(bx, rowY, cellW, rowH, startCol, endCol, cellDay, name, peakDay) {
-        var color = PLANET_COLOR[name];
-        var light = lighten(color, 0.55);
-        var x = bx + startCol * cellW + 1, w = (endCol - startCol + 1) * cellW - 2;
-        doc.setFillColor(light[0], light[1], light[2]);
-        doc.roundedRect(x, rowY + 1, w, rowH - 2, 2.5, 2.5, 'F');
-        for (var c = startCol; c <= endCol; c++) {
-          var day = cellDay[c];
-          var cx = bx + c * cellW + cellW / 2;
-          if (day === peakDay) {
-            doc.setFillColor(color[0], color[1], color[2]);
-            doc.circle(cx, rowY + rowH / 2 - 1, Math.min(cellW, rowH) / 2 - 1.5, 'F');
-            doc.setFont('helvetica', 'bold'); doc.setFontSize(6.6); doc.setTextColor(30, 24, 14);
-            doc.text(String(day), cx, rowY + rowH / 2 + 1.3, { align: 'center' });
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(4.6); doc.setTextColor(30, 24, 14);
-            doc.text(PLANET_ABBR[name], cx, rowY + rowH - 1.3, { align: 'center' });
-          } else {
-            doc.setFont('helvetica', 'normal'); doc.setFontSize(6.6); doc.setTextColor(45, 38, 25);
-            doc.text(String(day), cx, rowY + rowH / 2 + 2, { align: 'center' });
-          }
+      // A single day activated by one planet, drawn as its OWN small circle
+      // (never a merged multi-day band) using that planet's locked color.
+      // The peak day is visually bigger/brighter than the surrounding
+      // transit-window days, which get a smaller, lighter-tint dot.
+      function drawSinglePlanetDay(bx, rowY, cellW, rowH, col, day, name, isPeak) {
+        var cx = bx + col * cellW + cellW / 2, cy = rowY + rowH / 2 - 1;
+        var maxR = Math.min(cellW, rowH) / 2 - 1.5;
+        if (isPeak) {
+          drawPlanetDot(name, cx, cy, maxR);
+          doc.setFont(BODY_FONT, 'bold'); doc.setFontSize(6.6); doc.setTextColor(255, 255, 255);
+          doc.text(String(day), cx, rowY + rowH / 2 + 1.3, { align: 'center' });
+          doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(4.4); doc.setTextColor(255, 255, 255);
+          doc.text(PLANET_ABBR[name], cx, rowY + rowH - 1.3, { align: 'center' });
+        } else {
+          var color = PLANET_COLOR_LIGHT[name];
+          if (name === 'moon') drawMoonHalo(cx, cy, maxR * 0.66);
+          doc.setFillColor(color[0], color[1], color[2]);
+          doc.circle(cx, cy, maxR * 0.66, 'F');
+          doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(6.4); doc.setTextColor(REPORT_PALETTE.bodyInk[0], REPORT_PALETTE.bodyInk[1], REPORT_PALETTE.bodyInk[2]);
+          doc.text(String(day), cx, rowY + rowH / 2 + 1.6, { align: 'center' });
         }
       }
 
       // A day where more than one planet is active at once (rare, e.g. Sun
-      // and Moon both near your Fortune Point on the same day).
+      // and Moon both near your Fortune Point on the same day) - split circle,
+      // left half = planet A color, right half = planet B color.
       function drawMultiCell(bx, rowY, cellW, rowH, col, day, list) {
         var cx = bx + col * cellW + cellW / 2;
+        var cy = rowY + rowH / 2 - 2;
         var r = Math.min(cellW, rowH) / 2 - 2;
+        if ((list[0].name === 'moon' || list[1].name === 'moon')) drawMoonHalo(cx, cy, r);
         if (list.length === 2) {
           var c1 = PLANET_COLOR[list[0].name], c2 = PLANET_COLOR[list[1].name];
-          doc.setFillColor(c1[0], c1[1], c1[2]); doc.circle(cx - r * 0.42, rowY + rowH / 2 - 2, r * 0.62, 'F');
-          doc.setFillColor(c2[0], c2[1], c2[2]); doc.circle(cx + r * 0.42, rowY + rowH / 2 - 2, r * 0.62, 'F');
+          doc.setFillColor(c1[0], c1[1], c1[2]); doc.circle(cx - r * 0.42, cy, r * 0.62, 'F');
+          doc.setFillColor(c2[0], c2[1], c2[2]); doc.circle(cx + r * 0.42, cy, r * 0.62, 'F');
         } else {
-          doc.setFillColor(150, 105, 30);
-          doc.circle(cx, rowY + rowH / 2 - 2, r, 'F');
+          doc.setFillColor(REPORT_PALETTE.gold[0], REPORT_PALETTE.gold[1], REPORT_PALETTE.gold[2]);
+          doc.circle(cx, cy, r, 'F');
         }
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(6.2); doc.setTextColor(255, 255, 255);
+        doc.setFont(BODY_FONT, 'bold'); doc.setFontSize(6.2); doc.setTextColor(255, 255, 255);
         doc.text(String(day), cx, rowY + rowH / 2 + 0.3, { align: 'center' });
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(4.2); doc.setTextColor(30, 24, 14);
+        doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(4.2); doc.setTextColor(255, 255, 255);
         var abbrs = list.map(function (p) { return PLANET_ABBR[p.name]; }).join('+');
         doc.text(abbrs, cx, rowY + rowH - 1, { align: 'center' });
       }
 
       function drawCombinedMonthBox(bx, by, bw, bh, yy, mm) {
-        doc.setFillColor(246, 240, 222);
+        doc.setFillColor(REPORT_PALETTE.cardBg[0], REPORT_PALETTE.cardBg[1], REPORT_PALETTE.cardBg[2]);
         doc.roundedRect(bx, by, bw, bh, 4, 4, 'F');
-        doc.setDrawColor(210, 200, 180); doc.setLineWidth(0.6);
+        // Antique-gold top rule (the design's "month-card top rule") plus a
+        // subtle gold-tinted border around the whole card.
+        doc.setDrawColor(REPORT_PALETTE.gold[0], REPORT_PALETTE.gold[1], REPORT_PALETTE.gold[2]);
+        doc.setLineWidth(1.4);
+        doc.line(bx + 4, by + 1.5, bx + bw - 4, by + 1.5);
+        doc.setDrawColor(REPORT_PALETTE.goldSoft[0], REPORT_PALETTE.goldSoft[1], REPORT_PALETTE.goldSoft[2]); doc.setLineWidth(0.6);
         doc.roundedRect(bx, by, bw, bh, 4, 4);
 
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(150, 105, 30);
+        doc.setFont(HEADING_FONT, 'bold'); doc.setFontSize(8); doc.setTextColor(REPORT_PALETTE.headingInk[0], REPORT_PALETTE.headingInk[1], REPORT_PALETTE.headingInk[2]);
         doc.text(MONTH_NAMES[mm - 1].slice(0, 3) + ' ' + yy, bx + bw / 2, by + 12, { align: 'center' });
 
         var cellW = bw / 7, padTop = 20;
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(6.2); doc.setTextColor(150, 140, 115);
+        doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(6.2); doc.setTextColor(REPORT_PALETTE.mutedInk2[0], REPORT_PALETTE.mutedInk2[1], REPORT_PALETTE.mutedInk2[2]);
         WEEKDAY_LETTERS.forEach(function (l, i) { doc.text(l, bx + i * cellW + cellW / 2, by + padTop, { align: 'center' }); });
 
         var gridTop = by + padTop + 8, rowH = (bh - padTop - 8 - 4) / 6;
@@ -1793,12 +1878,11 @@
             if (cellDay[col2] == null) { col2++; continue; }
             var cp = cellPlanet[col2];
             if (cp && cp.type === 'single') {
-              var startCol = col2, name = cp.name, peakDay = null;
-              while (col2 < 7 && cellPlanet[col2] && cellPlanet[col2].type === 'single' && cellPlanet[col2].name === name) {
-                if (cellPlanet[col2].peak) peakDay = cellDay[col2];
-                col2++;
-              }
-              drawBand(bx, rowY, cellW, rowH, startCol, col2 - 1, cellDay, name, peakDay);
+              // Individually-highlighted days (locked design): each date
+              // gets its own small circle rather than a merged multi-day
+              // band, with the peak day drawn bigger/brighter.
+              drawSinglePlanetDay(bx, rowY, cellW, rowH, col2, cellDay[col2], cp.name, cp.peak);
+              col2++;
             } else if (cp && cp.type === 'multi') {
               drawMultiCell(bx, rowY, cellW, rowH, col2, cellDay[col2], cp.list);
               col2++;
@@ -1828,6 +1912,63 @@
         y += 4;
       }
 
+      // Short "12 Sep" style label (no year, no time) for the timeline bar's
+      // end labels - the table cell is narrow, so a full date doesn't fit.
+      function fmtShortDay(jd) {
+        var d = jdToIST(jd);
+        return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' });
+      }
+
+      // ---- "This Transit" timeline bar: a small horizontal strip drawn
+      // inside a table cell showing where the transit window sits in time.
+      // Moon: a fixed 48-hour bar centered on the peak instant, with the
+      // peak marked as a tick and the actual ~6h window highlighted, centered
+      // in the bar. Every other planet: the bar spans 3x the actual transit
+      // duration, centered on the transit's midpoint, so the real window
+      // always occupies exactly the middle third of the bar. ----
+      function drawTransitTimelineBar(doc, x, y, w, h, transitStartDate, transitEndDate, peakDate, color, isMoon) {
+        var barStart, barEnd;
+        if (isMoon) {
+          barStart = peakDate - 1; barEnd = peakDate + 1; // 48h, centered on peak
+        } else {
+          var mid = (transitStartDate + transitEndDate) / 2;
+          var dur = transitEndDate - transitStartDate;
+          barStart = mid - 1.5 * dur; barEnd = mid + 1.5 * dur; // window = middle third
+        }
+        var span = Math.max(barEnd - barStart, 1e-6);
+        var barY = y + h / 2;
+        function xAt(jd) { return x + ((jd - barStart) / span) * w; }
+
+        // Full-width track line (light gold, low-opacity equivalent).
+        doc.setDrawColor(REPORT_PALETTE.goldSoft[0], REPORT_PALETTE.goldSoft[1], REPORT_PALETTE.goldSoft[2]);
+        doc.setLineWidth(1);
+        doc.line(x, barY, x + w, barY);
+
+        // Filled "core" segment = the actual transit window, in the planet's
+        // locked color.
+        var segH = Math.min(h * 0.55, 5.5);
+        var sx = xAt(transitStartDate), ex = xAt(transitEndDate);
+        var segW = Math.max(ex - sx, 1.6);
+        doc.setFillColor(color[0], color[1], color[2]);
+        doc.roundedRect(sx, barY - segH / 2, segW, segH, segH / 2, segH / 2, 'F');
+
+        // Peak-marker tick, positioned at the peak's relative position within
+        // the core segment.
+        var px = xAt(peakDate);
+        doc.setDrawColor(REPORT_PALETTE.headingInk[0], REPORT_PALETTE.headingInk[1], REPORT_PALETTE.headingInk[2]);
+        doc.setLineWidth(1.1);
+        doc.line(px, barY - segH / 2 - 1.8, px, barY + segH / 2 + 1.8);
+
+        // Tiny date labels at the bar's ends, only if the column is wide
+        // enough (a PDF table cell here) for them to stay legible.
+        if (w >= 46) {
+          doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(4.6);
+          doc.setTextColor(REPORT_PALETTE.mutedInk2[0], REPORT_PALETTE.mutedInk2[1], REPORT_PALETTE.mutedInk2[2]);
+          doc.text(fmtShortDay(barStart), x, y + h - 1, { align: 'left' });
+          doc.text(fmtShortDay(barEnd), x + w, y + h - 1, { align: 'right' });
+        }
+      }
+
       // ---- One combined table, every planet's transits together in pure
       // chronological order. ----
       function combinedTransitTable(list) {
@@ -1839,19 +1980,17 @@
         var headerH = 18, rowH = 18;
 
         ensureSpace(headerH + rowH);
-        doc.setFillColor(58, 46, 20);
+        doc.setFillColor(REPORT_PALETTE.headingInk[0], REPORT_PALETTE.headingInk[1], REPORT_PALETTE.headingInk[2]);
         doc.rect(margin, y, contentW, headerH, 'F');
-        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.6); doc.setTextColor(245, 238, 220);
+        doc.setFont(BODY_FONT, 'bold'); doc.setFontSize(7.6); doc.setTextColor(pal.pageBg[0], pal.pageBg[1], pal.pageBg[2]);
         headers.forEach(function (h, i) { doc.text(h, colX[i] + 5, y + 12); });
         y += headerH;
 
         list.forEach(function (item, idx) {
           ensureSpace(rowH);
-          if (idx % 2 === 1) { doc.setFillColor(246, 240, 222); doc.rect(margin, y, contentW, rowH, 'F'); }
-          var color = PLANET_COLOR[item.planet];
-          doc.setFillColor(color[0], color[1], color[2]);
-          doc.circle(colX[2] - 4, y + 9, 2.6, 'F');
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(7.6); doc.setTextColor(50, 45, 35);
+          if (idx % 2 === 1) { doc.setFillColor(REPORT_PALETTE.cardBg[0], REPORT_PALETTE.cardBg[1], REPORT_PALETTE.cardBg[2]); doc.rect(margin, y, contentW, rowH, 'F'); }
+          drawPlanetDot(item.planet, colX[2] - 4, y + 9, 2.6);
+          doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(7.6); doc.setTextColor(REPORT_PALETTE.bodyInk[0], REPORT_PALETTE.bodyInk[1], REPORT_PALETTE.bodyInk[2]);
           doc.text(String(idx + 1), colX[0] + 5, y + 12);
           doc.text(fmtISTDate(item.peak), colX[1] + 5, y + 12);
           doc.text(PLANET_DISPLAY[item.planet], colX[2] + 5, y + 12);
@@ -1864,6 +2003,43 @@
         y += 12;
       }
 
+      // ---- One planet's own transit table (no Planet column - the section
+      // heading above it already says which planet). A "This Transit"
+      // timeline-bar column sits at the right, showing at a glance where
+      // each window falls relative to its surrounding time. ----
+      function transitTable(name, windows) {
+        var fracs = [0.05, 0.14, 0.11, 0.23, 0.25, 0.22];
+        var headers = ['#', 'Date (Peak)', 'Duration', 'Peak Window', 'Extended Window', 'This Transit'];
+        var colX = [margin];
+        var widths = fracs.map(function (f) { return f * contentW; });
+        for (var i = 1; i < widths.length; i++) colX.push(colX[i - 1] + widths[i - 1]);
+        var headerH = 18, rowH = 20;
+
+        ensureSpace(headerH + rowH);
+        doc.setFillColor(REPORT_PALETTE.headingInk[0], REPORT_PALETTE.headingInk[1], REPORT_PALETTE.headingInk[2]);
+        doc.rect(margin, y, contentW, headerH, 'F');
+        doc.setFont(BODY_FONT, 'bold'); doc.setFontSize(7.6); doc.setTextColor(pal.pageBg[0], pal.pageBg[1], pal.pageBg[2]);
+        headers.forEach(function (h, i) { doc.text(h, colX[i] + 5, y + 12); });
+        y += headerH;
+
+        var color = PLANET_COLOR[name];
+        var isMoon = name === 'moon';
+        windows.forEach(function (w, idx) {
+          ensureSpace(rowH);
+          if (idx % 2 === 1) { doc.setFillColor(REPORT_PALETTE.cardBg[0], REPORT_PALETTE.cardBg[1], REPORT_PALETTE.cardBg[2]); doc.rect(margin, y, contentW, rowH, 'F'); }
+          doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(7.6); doc.setTextColor(REPORT_PALETTE.bodyInk[0], REPORT_PALETTE.bodyInk[1], REPORT_PALETTE.bodyInk[2]);
+          doc.text(String(idx + 1), colX[0] + 5, y + rowH / 2 + 2.5);
+          doc.text(fmtISTDate(w.peak), colX[1] + 5, y + rowH / 2 + 2.5);
+          doc.text(fmtDuration(w.start, w.end), colX[2] + 5, y + rowH / 2 + 2.5);
+          doc.text(pdfSafe(fmtWindowRange(w.start, w.end)), colX[3] + 5, y + rowH / 2 + 2.5);
+          var ext = isMoon ? transits.moonExtended.find(function (e) { return Math.abs(e.peak - w.peak) < 0.5; }) : null;
+          doc.text(ext ? pdfSafe(fmtWindowRange(ext.start, ext.end)) : '-', colX[4] + 5, y + rowH / 2 + 2.5);
+          drawTransitTimelineBar(doc, colX[5] + 4, y + 2, widths[5] - 8, rowH - 4, w.start, w.end, w.peak, color, isMoon);
+          y += rowH;
+        });
+        y += 10;
+      }
+
       // ---- "What to do" block: guidance broken into four short, specific
       // lines instead of one long paragraph. ----
       function whatToDoBlock(name) {
@@ -1871,39 +2047,27 @@
         var rows = [['relationships', 'Relationships & Family'], ['career', 'Career & Growth'], ['money', 'Money & Purchases'], ['wellness', 'Personal & Wellness']];
         rows.forEach(function (pair) {
           ensureSpace(24);
-          doc.setFont('helvetica', 'bold'); doc.setFontSize(8.8); doc.setTextColor(150, 105, 30);
+          doc.setFont(HEADING_FONT, 'bold'); doc.setFontSize(8.8); doc.setTextColor(REPORT_PALETTE.headingInk[0], REPORT_PALETTE.headingInk[1], REPORT_PALETTE.headingInk[2]);
           doc.text(pair[1] + ':', margin + 2, y); y += 11;
-          doc.setFont('helvetica', 'normal'); doc.setFontSize(8.8); doc.setTextColor(60, 55, 45);
+          doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(8.8); doc.setTextColor(REPORT_PALETTE.bodyInk[0], REPORT_PALETTE.bodyInk[1], REPORT_PALETTE.bodyInk[2]);
           var lines = doc.splitTextToSize(pdfSafe(cats[pair[0]]), contentW - 6);
           lines.forEach(function (line) { ensureSpace(11); doc.text(line, margin + 2, y); y += 11; });
           y += 4;
         });
       }
 
-      // ---- 1. Year-at-a-glance: one calendar, every planet overlaid. ----
-      heading('Your Year at a Glance', 15);
-      para('Every planet\'s activation of your Fortune Point over the coming year, on one calendar. Each planet has its own color (see the legend below); a run of several consecutive days under the same planet is shown as one merged band, with the exact peak day picked out and labelled. A day with more than one planet active at once is marked specially.');
-      drawLegend();
-      combinedYearCalendar();
-
-      // ---- 2. Every transit, one table, pure chronological order. ----
+      // Every transit, across all planets, in pure chronological order -
+      // built once here, used later on the final summary page.
       var masterList = [];
       TRANSIT_PLANETS.forEach(function (name) {
         transits[name].forEach(function (w) { masterList.push({ planet: name, start: w.start, end: w.end, peak: w.peak }); });
       });
       masterList.sort(function (a, b) { return a.peak - b.peak; });
 
-      doc.addPage(); y = margin;
-      heading('All Transits, Chronological Order', 15);
-      if (masterList.length === 0) {
-        para('No transits from the classical planets fall within this exact window over the coming year.');
-      } else {
-        combinedTransitTable(masterList);
-      }
-
-      // ---- 3. What to do, planet by planet. ----
-      doc.addPage(); y = margin;
-      heading('What To Do, Planet by Planet', 15);
+      // ---- 1. Each planet's own section: its transit table, then what to
+      // do, in order of how often each planet returns (Moon first). ----
+      heading('Your Transits, Planet by Planet', 15);
+      para('Every planet that activates your Fortune Point in the coming year, with its own table of exact windows and what that activation favours - starting with the Moon, since it returns to this point far more often than any other planet.');
       TRANSIT_PLANETS.forEach(function (name) {
         var windows = transits[name];
         var countLabel = windows.length === 0 ? '' : '  (' + windows.length + (windows.length === 1 ? ' transit' : ' transits') + ' this year)';
@@ -1912,24 +2076,67 @@
 
         if (windows.length === 0) {
           ensureSpace(28);
-          doc.setFillColor(238, 232, 214);
+          doc.setFillColor(REPORT_PALETTE.cardBg[0], REPORT_PALETTE.cardBg[1], REPORT_PALETTE.cardBg[2]);
           doc.roundedRect(margin, y, contentW, 26, 3, 3, 'F');
-          doc.setFont('helvetica', 'italic'); doc.setFontSize(9.3); doc.setTextColor(120, 110, 90);
+          doc.setFont(BODY_FONT, 'italic'); doc.setFontSize(9.3); doc.setTextColor(REPORT_PALETTE.mutedInk[0], REPORT_PALETTE.mutedInk[1], REPORT_PALETTE.mutedInk[2]);
           doc.text(pdfSafe('No ' + PLANET_DISPLAY[name] + ' transit activates your Fortune Point within the next year.'), margin + 10, y + 17);
           y += 26 + 10;
         } else {
+          transitTable(name, windows);
           whatToDoBlock(name);
         }
 
         ensureSpace(16);
         y += 8;
-        doc.setDrawColor(225, 215, 195); doc.setLineWidth(0.5);
+        doc.setDrawColor(REPORT_PALETTE.goldSoft[0], REPORT_PALETTE.goldSoft[1], REPORT_PALETTE.goldSoft[2]); doc.setLineWidth(0.5);
         doc.line(margin, y, margin + contentW, y);
         y += 18;
       });
 
+      // ---- 2. Final summary page(s): the whole year at a glance - one
+      // combined calendar, one chronological table, and a condensed
+      // quick-reference reminder, all together as a one-view summary. ----
+      doc.addPage(); paintPageBackground(); y = margin;
+      heading('Your Year at a Glance - Summary', 15);
+      para('Everything above, brought together in one place: every planet\'s activation of your Fortune Point on one shared calendar, in one color-coded view. Each planet has its own color (see the legend below), drawn as an individually-highlighted circle on its own day - never a merged multi-day band - with the exact peak day picked out bigger and brighter. A day with more than one planet active at once is marked specially, split between both planets\' colors.');
+      drawLegend();
+      combinedYearCalendar();
+
+      doc.addPage(); paintPageBackground(); y = margin;
+      heading('All Transits, Chronological Order', 13);
+      if (masterList.length === 0) {
+        para('No transits from the classical planets fall within this exact window over the coming year.');
+      } else {
+        combinedTransitTable(masterList);
+      }
+
+      heading('Quick Reference: What Each Planet Favours', 13);
+      var activePlanets = TRANSIT_PLANETS.filter(function (name) { return transits[name].length > 0; });
+      if (activePlanets.length === 0) {
+        para('No transits fall in this window this year, so there is nothing above to act on beyond your everyday routine.');
+      } else {
+        activePlanets.forEach(function (name) {
+          ensureSpace(26);
+          drawPlanetDot(name, margin + 3, y - 3, 3);
+          doc.setFont(HEADING_FONT, 'bold'); doc.setFontSize(8.6); doc.setTextColor(REPORT_PALETTE.headingInk[0], REPORT_PALETTE.headingInk[1], REPORT_PALETTE.headingInk[2]);
+          var label = PLANET_DISPLAY[name] + ':  ';
+          doc.text(label, margin + 11, y);
+          var labelW = doc.getTextWidth(label);
+          doc.setFont(BODY_FONT, 'normal'); doc.setFontSize(8.6); doc.setTextColor(REPORT_PALETTE.bodyInk[0], REPORT_PALETTE.bodyInk[1], REPORT_PALETTE.bodyInk[2]);
+          var lines = doc.splitTextToSize(pdfSafe(PLANET_HEADLINE[name]), contentW - 11 - labelW);
+          doc.text(lines[0], margin + 11 + labelW, y);
+          y += 12;
+          for (var li = 1; li < lines.length; li++) {
+            ensureSpace(12);
+            doc.text(lines[li], margin + 11 + labelW, y);
+            y += 12;
+          }
+          y += 5;
+        });
+      }
+
       // ---- Your other Fortune Points (Yogi Point & Bhrigu Bindu) ----
-      doc.addPage(); y = margin;
+      doc.addPage(); paintPageBackground(); y = margin;
       heading('Your Other Fortune Points', 15);
       para('Alongside Punya Saham, two more traditional "fortune point" techniques are calculated for you from the same birth details. They are included here for completeness - a fuller transit report for each may be offered separately in future.');
 
@@ -1942,11 +2149,11 @@
       // ---- Footer / disclaimer (visually distinct - italic, smaller, muted,
       // like terms & conditions fine print) ----
       ensureSpace(30);
-      doc.setDrawColor(210, 200, 180); doc.setLineWidth(0.6);
+      doc.setDrawColor(REPORT_PALETTE.goldSoft[0], REPORT_PALETTE.goldSoft[1], REPORT_PALETTE.goldSoft[2]); doc.setLineWidth(0.6);
       doc.line(margin, y, margin + contentW, y); y += 14;
-      doc.setFont('helvetica', 'bolditalic'); doc.setFontSize(9.5); doc.setTextColor(110, 105, 95);
+      doc.setFont(HEADING_FONT, 'bolditalic'); doc.setFontSize(9.5); doc.setTextColor(REPORT_PALETTE.mutedInk[0], REPORT_PALETTE.mutedInk[1], REPORT_PALETTE.mutedInk[2]);
       doc.text('Methodology & Disclaimer', margin, y); y += 14;
-      para('Calculated using established astronomical ephemeris methods (Meeus solar/lunar series for Sun and Moon; JPL/Standish Keplerian elements for the other planets) and the Lahiri (Chitrapaksha) ayanamsa, cross-checked against independent published ephemerides for accuracy. Punya Saham and its transit activations reflect traditional Tajika (Varshaphal) technique rather than a single universally agreed method - treat this as a traditional reading, not a certainty. For time-critical decisions, verify against a Swiss-Ephemeris-based chart.', { size: 8.5, italic: true, color: [130, 125, 115] });
+      para('Calculated using established astronomical ephemeris methods (Meeus solar/lunar series for Sun and Moon; JPL/Standish Keplerian elements for the other planets) and the Lahiri (Chitrapaksha) ayanamsa, cross-checked against independent published ephemerides for accuracy. Punya Saham and its transit activations reflect traditional Tajika (Varshaphal) technique rather than a single universally agreed method - treat this as a traditional reading, not a certainty. For time-critical decisions, verify against a Swiss-Ephemeris-based chart.', { size: 8.5, italic: true, color: REPORT_PALETTE.mutedInk2 });
 
       var fname = 'Fortune-Point-Transit-Report' + (c.name ? '-' + c.name.replace(/[^a-z0-9]+/gi, '-') : '') + '.pdf';
       doc.save(fname);
@@ -2048,7 +2255,6 @@
     }
   });
 </script>
-
 
 <script>
   if ('serviceWorker' in navigator) {

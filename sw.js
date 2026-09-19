@@ -1,7 +1,7 @@
 // Minimal service worker: caches the app shell so it opens instantly and
 // works offline once visited. Bump CACHE_NAME whenever you change index.html
 // to force clients to fetch the new version.
-const CACHE_NAME = 'punya-saham-v2';
+const CACHE_NAME = 'punya-saham-v4';
 const APP_SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
